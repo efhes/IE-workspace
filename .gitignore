@@ -1,0 +1,15 @@
+# We do not keep track of macOS specific files
+.DS_Store
+# We do not keep track of python cache files
+*.pyc
+# We do not keep track of wheels files
+*.whl
+# We do not keep track of images
+*.jpg
+*.h264
+# We do not keep track of models
+*.h5
+*.pth
+*.json
+# We do not keep track of zip files
+*.zip

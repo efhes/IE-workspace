@@ -1,0 +1,47 @@
+https://colab.research.google.com/drive/1DrAP9iORyJrqjwnZyF9jZ6hn54LITT2P#scrollTo=Htbza5J7vWtf
+https://forum.opencv.org/t/videocapture-read-method-returns-empty-ret/7500
+
+!/usr/bin/python3
+
+import cv2
+
+from picamera2 import Picamera2
+
+cv2.startWindowThread()
+
+picam2 = Picamera2()
+config = picam2.create_preview_configuration(lores={"size": (640, 480)})
+picam2.configure(config)
+picam2.start()
+
+while True:
+    yuv420 = picam2.capture_array("lores")
+    rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
+    cv2.imshow("Camera", rgb)
+
+
+
+
+
+import cv2
+import time
+
+cap = cv2.VideoCapture(0)
+cv2.namedWindow("output", cv2.WINDOW_NORMAL)
+
+while(True): 
+    time.sleep(.5)
+    ret, frame = cap.read() 
+    if ret is False:
+        print('No Frame')
+    else:
+        cv2.imshow('output', frame) 
+
+    # the 'q' button is set as the 
+    # quitting button you may use any 
+    # desired button of your choice 
+    if cv2.waitKey(1) & 0xFF == ord('q'): 
+        break
+cap.release() 
+cv2.destroyAllWindows()
+
