@@ -16,11 +16,10 @@ import termios
 from collections import defaultdict
 from datetime import datetime
 
-from AR_modules.config.general import RASPI, debug, TRAINING_LENGTH_PER_ACTIVITY, RECORD_MODE, TEST_MODE
+from AR_modules.config.general_recorder import RASPI, debug, TRAINING_LENGTH_PER_ACTIVITY
+from AR_modules.config.general_recorder import DATA_PATH, DATA_SET, NUM_USERS
 from AR_modules.timing.timing import RepeatedTimer
 from AR_modules.timing.timing import AccelerometerRecorder
-
-from AR_modules.config.general import MODELS_PATH, DATA_PATH, DATA_SET, CLASSIFIER_NAME, NUM_USERS
 
 if RASPI:
     from AR_modules.sensehat.RTIMULib import InitializeRTIMU
@@ -49,8 +48,7 @@ print("\nargs:")
 print(args)
 
 if args.train_length_per_activity != None and args.train_length_per_activity[0] > 0:
-        TRAIN = 1
-        TRAINING_LENGTH_PER_ACTIVITY = int(args.train_length_per_activity[0])
+    TRAINING_LENGTH_PER_ACTIVITY = int(args.train_length_per_activity[0])
     
 debug = args.d
 
@@ -88,7 +86,7 @@ recorder = AccelerometerRecorder(
     #50, # OVERLAP
     0.02, imu) # INTERVAL in secs == 20 ms
 
-print("\n[ACTIVITY RECOGNIZER]\n")
+print("\n[ACTIVITY RECORDER]\n")
 
 print("\t[DEBUG MODE][%d]\n" % debug)
 
@@ -119,7 +117,7 @@ def wait_for_keypress(target_key, exit_key, yes_to_all_key):
         return result
 
 def record_raw_dataset(csv_path, num_frames_to_record=TRAINING_LENGTH_PER_ACTIVITY):
-    
+    succesfull_recording = True
     print("\n[RECORDING NEW DATA]")
     print("\t[recording " + str(num_frames_to_record) + " new frames per class]\n")
     
@@ -152,7 +150,10 @@ def record_raw_dataset(csv_path, num_frames_to_record=TRAINING_LENGTH_PER_ACTIVI
             #key=input("[press q to quit; press c to continue]")
             key = wait_for_keypress('c', 'q', 'y')
             if key == 'q':
-                exit(0)
+                #exit(0)
+                timer.stop ()
+                succesfull_recording = False
+                break
             
             print("RECORDING!!!!")
             if RASPI:
@@ -192,12 +193,13 @@ def record_raw_dataset(csv_path, num_frames_to_record=TRAINING_LENGTH_PER_ACTIVI
                     
                     recorder.condition.wait() # sleep until item becomes available
                 recorder.condition.release()
-                
-    # save data in csv
-    print('\n[RECORDED DATA SAVED IN ', csv_path, ']')
-    with open(csv_path, 'a') as f:
-        csv_writer = csv.writer(f)
-        csv_writer.writerows(csv_data)
+    
+    if succesfull_recording:
+        # save data in csv
+        print('\n[RECORDED DATA SAVED IN ', csv_path, ']')
+        with open(csv_path, 'a') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerows(csv_data)
 
 if __name__ == "__main__":
     try:
@@ -217,8 +219,16 @@ if __name__ == "__main__":
     except Exception:
         print(traceback.format_exc())
 
+    # The finally block ensures that certain cleanup or finalization code is always executed, whether an exception occurred or not.
     finally:
+        # Create a list to store existing threads
+        all_threads = []
 
+        # Enumerate all currently alive threads and add them to the list
+        for thread in threading.enumerate():
+            all_threads.append(thread)
+        print('Number of existing threads = %d' % len(all_threads))
+        
         print("\nnum_mini_buffers_recorded = " + str(recorder.num_mini_buffers_recorded))
         print("num_samples_recorded = " + str(recorder.num_samples_recorded))
-        exit(1)
+        exit(0) # Exits with an exit status of 0 (indicating success).
