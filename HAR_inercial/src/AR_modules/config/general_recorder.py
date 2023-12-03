@@ -9,8 +9,8 @@ RASPI = 1
 debug = 0
 
 # Number of recorded instances per activity
-TRAINING_LENGTH_PER_ACTIVITY=4
-#TRAINING_LENGTH_PER_ACTIVITY=30
+#TRAINING_LENGTH_PER_ACTIVITY=4
+TRAINING_LENGTH_PER_ACTIVITY=30
 
 # Directorio donde guardamos los datos del recorder
 DATA_PATH="/home/pi/workspace/HAR_inercial/data/raw_data/"

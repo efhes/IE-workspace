@@ -126,10 +126,8 @@ def Recognize_lstm(model, tensor):
     if RASPI:
         if CLASSES == "DRIVE_BACKHAND_SERVE_LOB":
             if num_pred == 0:
-                #sense.set_pixels(stand_pixel_list)
                 sense.set_pixels(DRIVE_list)
             elif num_pred == 1:
-                #sense.set_pixels(sit_pixel_list)
                 sense.set_pixels(BACKHAND_list)
             elif num_pred == 2:
                 sense.set_pixels(SERVE_list)

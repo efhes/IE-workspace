@@ -13,3 +13,11 @@
 *.json
 # We do not keep track of zip files
 *.zip
+# We do not keep track of log, txt, lis, bat, out, csv or arff files
+*.log
+*.txt
+*.lis
+*.bat
+*.out
+*.csv
+*.arff

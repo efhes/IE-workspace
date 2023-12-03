@@ -51,8 +51,7 @@ model_path = '../models/custom_model_ft.pth'
 with open('./imagenet-simple-labels/imagenet-simple-labels.json') as f:
     labels = json.load(f)
 
-labels = ['boli', 'cascos', 'movil', 'raton']
-#labels = ['bottle', 'mouse', 'pencilcase', 'raspberry']
+labels = ['bottle', 'mouse', 'pencilcase', 'raspberry']
 
 num_classes = len(labels)
 COLORS = np.random.uniform(0, 255, size=(len(labels), 3))
