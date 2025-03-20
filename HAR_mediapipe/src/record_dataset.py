@@ -1,20 +1,14 @@
-import time
 import cv2
 import os
-#import libcamera
+import time
 import numpy as np
-#from picamera2 import Picamera2, Preview
-
-import sys
-import tty
-import termios
-
-from config import Config, CameraConfig, Colors, WindowMessage
-from config import ConfigMediapipeDetector
 import mediapipe as mp
-from landmarksLib import get_XYZ, draw_landmarks_on_image
 
 from cameras import CVCamera, PICamera
+from config import Config, CameraConfig, Colors
+from config import ConfigMediapipeDetector, RecordingSetup
+from gui import WindowMessage
+from landmarksLib import draw_landmarks_on_image
 
 ON_RASPBERRY_PI = False
 
@@ -24,66 +18,7 @@ colors = Colors()
 config = Config(classes=['three', 'four', 'five'], num_images_per_class=5, use_landmarks = True)
 cam_config = CameraConfig(FPS=15, resolution='highres')
 
-def ShowWindowMessages(image, msgs):
-    for i in range(3):
-        cv2.putText(image, 
-                    msgs.msg[i]['text'],
-                    org=msgs.msg[i]['position'],
-                    fontFace=2, fontScale=0.75, color=msgs.msg[i]['color'])
-                
-def wait_for_keypress(target_key, exit_key, yes_to_all_key):
-    print(f"Press '{target_key}' to continue or '{exit_key}' to exit... ('{yes_to_all_key}') if YES to all...")
-    fd = sys.stdin.fileno()
-    old_settings = termios.tcgetattr(fd)
-    yes_to_all_result = False
-    
-    try:
-        tty.setraw(sys.stdin.fileno())
-        while True:
-            char = sys.stdin.read(1)
-            if char == target_key:
-                break
-            elif char == yes_to_all_key:
-                print("Yes to all...")
-                yes_to_all_result = True
-                break
-            elif char == exit_key:
-                print("Exiting...")
-                sys.exit(0)
-    finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return yes_to_all_result
-
-def CreateDefaultDatasetFolders(base_dataset_dir):
-    yes_to_all_result = False
-    
-    # Create default dataset folders
-    for c in config.classes:
-        new_dir = os.path.join(base_dataset_dir, "train", c)
-        try:
-            os.makedirs(new_dir)
-        except:
-            print('\n[WARNING]\n')
-            print('The following directory ALREADY EXISTS!!!!')
-            print(new_dir)
-            print('\n[WARNING]\n')
-            
-            if not yes_to_all_result:
-                yes_to_all_result = wait_for_keypress('c', 'q', 'y')
-        
-        new_dir = os.path.join(base_dataset_dir, "test", c)
-        try:
-            os.makedirs(new_dir)
-        except:
-            print('\n[WARNING]\n')
-            print('The following directory ALREADY EXISTS!!!!')
-            print(new_dir)
-            print('\n[WARNING]\n')
-            
-            if not yes_to_all_result:
-                yes_to_all_result = wait_for_keypress('c', 'q', 'y')
-
-def DisplayPreviewScreen(cam, detector, class_to_record, messages=None):
+def DisplayPreviewScreen(cam, detector, messages=None):
     #cam.start()
     
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.
@@ -108,7 +43,7 @@ def DisplayPreviewScreen(cam, detector, class_to_record, messages=None):
                 
         #image = cv2.flip(image,+1) #displays image in mirror format
         
-        ShowWindowMessages(image, messages)
+        messages.ShowWindowMessages(image)
         
         cv2.imshow(window_title, image)
         
@@ -175,7 +110,7 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
                 image, landmark_values = draw_landmarks_on_image(image, detection_result)
         
         messages.msg[1]['text'] = "Stored images: " + str(n_recorded + 1) + "/" + str(num_images_to_record)
-        ShowWindowMessages(image, messages)
+        messages.ShowWindowMessages(image)
 
         cv2.imshow(window_title, image)
 
@@ -213,26 +148,13 @@ def SaveRecordedImagesToDisk(recorded_images, class_to_save, num_samples_per_cla
         # save image in dataset
         cv2.imwrite(filename, recorded_images[i])
         print("Recorded ", filename)
-    
-def main():
-    num_samples_per_class = {}
-    num_samples_per_class['train'] = int(config.num_images_per_class * config.training_percentage/100)
-    num_samples_per_class['test']  = config.num_images_per_class - num_samples_per_class['train']
-    num_samples_per_class['total'] = config.num_images_per_class
 
-    print('\n[NEW DATASET RECORDING]')
-    print('\t- %d classes: ' % config.num_classes, config.classes)
-    print('\t- %d samples per class (%d samples in TOTAL)' % 
-          (num_samples_per_class['total'], 
-           config.num_classes * num_samples_per_class['total']))
-    print('\t- %d samples for training (i.e. %0.2f%%) and %d for testing (i.e. %0.2f%%)' % 
-          (num_samples_per_class['train'], 
-           config.training_percentage, 
-           num_samples_per_class['test'], 
-           100-config.training_percentage))
-    
+def main():
+    # Recording setup 
+    num_samples_per_class = RecordingSetup(config)
+
     # Create default dataset folders
-    CreateDefaultDatasetFolders(config.dataset_dir)
+    config.CreateDefaultDatasetFolders()
 
     # Create the detector
     detector = ConfigMediapipeDetector()
@@ -259,7 +181,7 @@ def main():
             txt3 = "or \'q\' to exit.", pos3 = (70, 300), col3 = colors.color['green'])
         
         # Display preview screen
-        DisplayPreviewScreen(cam, detector, c, preview_msgs)
+        DisplayPreviewScreen(cam, detector, preview_msgs)
 
         recording_msgs = WindowMessage(
             txt1 = "Recording in progress...", pos1 = (20, 40), col1 = colors.color['red'],
@@ -280,7 +202,7 @@ def main():
             txt3 = "", pos3 = (70, 300), col3 = colors.color['blue'])
 
     # Display final message
-    DisplayPreviewScreen(cam, detector, '', post_msgs)
+    DisplayPreviewScreen(cam, detector, post_msgs)
 
     # Release resources
     cam.stop()

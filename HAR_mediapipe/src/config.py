@@ -1,9 +1,8 @@
+import os
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from mediapipe import solutions
-from mediapipe.framework.formats import landmark_pb2
-from collections import namedtuple
+from gui import wait_for_keypress
 
 # Configuration class for the dataset generation
 class Config:
@@ -29,6 +28,35 @@ class Config:
 
         # Percentage of the recorded images that will be used for training (rest for test)
         self.training_percentage = training_percentage
+    
+    def CreateDefaultDatasetFolders(self):
+        yes_to_all_result = False
+        
+        # Create default dataset folders
+        for c in self.classes:
+            new_dir = os.path.join(self.dataset_dir, "train", c)
+            try:
+                os.makedirs(new_dir)
+            except:
+                print('\n[WARNING]\n')
+                print('The following directory ALREADY EXISTS!!!!')
+                print(new_dir)
+                print('\n[WARNING]\n')
+                
+                if not yes_to_all_result:
+                    yes_to_all_result = wait_for_keypress('c', 'q', 'y')
+            
+            new_dir = os.path.join(self.dataset_dir, "test", c)
+            try:
+                os.makedirs(new_dir)
+            except:
+                print('\n[WARNING]\n')
+                print('The following directory ALREADY EXISTS!!!!')
+                print(new_dir)
+                print('\n[WARNING]\n')
+                
+                if not yes_to_all_result:
+                    yes_to_all_result = wait_for_keypress('c', 'q', 'y')
 
 class CameraConfig:
     def __init__(self, FPS=30, resolution='highres'): 
@@ -62,19 +90,21 @@ def ConfigMediapipeDetector():
     detector = vision.HandLandmarker.create_from_options(options)
     return detector
 
-class WindowMessage:
-    def __init__(self, txt1=None, col1=None, pos1=None, txt2=None, col2=None, pos2=None, txt3=None, col3=None, pos3=None):
 
-        # Initialize messages with default or provided values
-        self.msg = []
+def RecordingSetup(config):
+    num_samples_per_class = {}
+    num_samples_per_class['train'] = int(config.num_images_per_class * config.training_percentage/100)
+    num_samples_per_class['test']  = config.num_images_per_class - num_samples_per_class['train']
+    num_samples_per_class['total'] = config.num_images_per_class
 
-        texts = [txt1, txt2, txt3]
-        colors = [col1, col2, col3]
-        positions = [pos1, pos2, pos3]
-
-        for txt, col, pos in zip(texts, colors, positions):
-            self.msg.append({
-                'text': txt if txt is not None else '',
-                'color': col if col is not None else (255, 0, 0),
-                'position': pos if pos is not None else (0, 0)
-            })
+    print('\n[NEW DATASET RECORDING]')
+    print('\t- %d classes: ' % config.num_classes, config.classes)
+    print('\t- %d samples per class (%d samples in TOTAL)' % 
+          (num_samples_per_class['total'], 
+           config.num_classes * num_samples_per_class['total']))
+    print('\t- %d samples for training (i.e. %0.2f%%) and %d for testing (i.e. %0.2f%%)' % 
+          (num_samples_per_class['train'], 
+           config.training_percentage, 
+           num_samples_per_class['test'], 
+           100-config.training_percentage))
+    return num_samples_per_class
