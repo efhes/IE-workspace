@@ -8,15 +8,34 @@ from cameras import CVCamera, PICamera
 from config import Config, CameraConfig, Colors
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import WindowMessage
-from landmarksLib import draw_landmarks_on_image
+from landmarksLib import draw_landmarks_on_image, GetLandmarksFromImages
 
 ON_RASPBERRY_PI = False
 
 # Instantiate the configuration
 window_title = "Hand gestures recorder"
 colors = Colors()
-config = Config(classes=['three', 'four', 'five'], num_images_per_class=5, use_landmarks = True)
+config = Config(classes=['three', 'four', 'five'], num_images_per_class=100, use_landmarks = True)
 cam_config = CameraConfig(FPS=15, resolution='highres')
+
+# En MediaPipe, la diferencia principal entre hand_world_landmarks y hand_landmarks radica en el sistema de coordenadas que utilizan para representar los puntos clave de las manos detectadas:
+
+# - hand_landmarks:
+# Proporciona las coordenadas de los puntos clave de la mano en un espacio de coordenadas normalizado, donde los valores X e Y se encuentran en el rango [0.0, 1.0].
+# Este espacio de coordenadas está relativo a la imagen de entrada. Es decir, las coordenadas están normalizadas con respecto a las dimensiones de la imagen.
+# No proporciona información sobre la profundidad (coordenada Z) en un espacio 3D real.
+# Es útil para aplicaciones donde solo se necesita la posición relativa de los puntos clave en la imagen 2D.
+
+# - hand_world_landmarks:
+# Proporciona las coordenadas de los puntos clave de la mano en un espacio de coordenadas 3D del mundo real.
+# Las coordenadas X, Y y Z se expresan en metros, con el origen ubicado aproximadamente en la raíz de la mano.
+# Esto permite obtener información sobre la posición y orientación 3D de la mano en el espacio.
+# Es esencial para aplicaciones que requieren un seguimiento preciso de la mano en 3D, como la realidad virtual, la realidad aumentada o el control de gestos 3D.
+# En resumen:
+
+# hand_landmarks son para coordenadas 2D relativas a la imagen.
+# hand_world_landmarks son para coordenadas 3D en el mundo real.
+# Esta diferencia es muy importante dependiendo de la aplicación que se le quiera dar a la detección de manos. Si unicamente se quiere detectar movimientos relativos dentro de una imagen, con hand_landmarks es suficiente, pero si se quiere trabajar con el movimiento de las manos en un espacio 3D, es necesario utilizar hand_world_landmarks.
 
 def DisplayPreviewScreen(cam, detector, messages=None):
     #cam.start()
@@ -157,7 +176,7 @@ def main():
     config.CreateDefaultDatasetFolders()
 
     # Create the detector
-    detector = ConfigMediapipeDetector()
+    detector = ConfigMediapipeDetector('./models/hand_landmarker.task')
 
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
@@ -218,3 +237,10 @@ if __name__ == "__main__":
 #        hands.close()
 #    picam2.close()
 
+# df_successful_detections, num_successful_detections, num_failed_detections = GetLandmarksFromImages(detector, 
+#                            ['five_00001.jpg', 'five_00002.jpg', 'five_00003.jpg'], 
+#                            'data/new_dataset/',
+#                            'train',
+#                            'five', 
+#                            'data/three_four_five_dataset/', 
+#                            config)
