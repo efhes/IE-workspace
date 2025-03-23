@@ -1,7 +1,20 @@
 import cv2
 from time import sleep
 
+class CameraConfig:
+    def __init__(self, FPS=30, resolution='highres'): 
+        # RESOLUTIONS
+        self.resolutions = {}
+        self.resolutions['highres'] = (1280, 720)
+        self.resolutions['large'] = (640, 480)
+        self.resolutions['small'] = (320, 200)
 
+        # RESOLUTION
+        self.resolution = self.resolutions[resolution]
+
+        # FRAME RATE
+        self.FPS = FPS
+        
 class Camera:
     def read_frame(self):
         pass

@@ -3,11 +3,19 @@ import time
 import numpy as np
 import mediapipe as mp
 import keras
+import sys
+import os
 
-from cameras import CVCamera, PICamera
-from config import Config, CameraConfig, Colors
-from config import ConfigMediapipeDetector
-from gui import WindowMessage
+# We add the common folder to the path
+# This folder contains the libraries that are shared between the different demos
+# This way we can import them without duplicating code
+lib_path = os.path.abspath("../common/")
+
+sys.path.append(lib_path)
+
+from cameras import CVCamera, PICamera, CameraConfig
+from config import Config, ConfigMediapipeDetector
+from gui import Colors, WindowMessage
 from landmarksLib import draw_landmarks_on_image
 
 ON_RASPBERRY_PI = False

@@ -7,9 +7,6 @@ import os
 lib_path = os.path.abspath("../common/")
 sys.path.append(lib_path)
 
-import mediapipe as mp
-from mediapipe.tasks import python
-from mediapipe.tasks.python import vision
 from gui import wait_for_keypress
 import random
 
@@ -20,15 +17,8 @@ class Config:
                  dataset_dir='./data/new_dataset/', 
                  num_images_per_class=100, 
                  training_percentage=66, 
-                 use_landmarks=True,
                  save_images=False):
         
-        # Use landmarks to record images
-        self.use_landmarks = use_landmarks
-        
-        # Number of landmarks
-        self.num_landmarks = 21
-
         # Array of class names
         self.classes = classes if classes is not None else ["gesture1", "gesture2", "gesture3"]
         self.num_classes = len(self.classes)
@@ -73,13 +63,6 @@ class Config:
                 
                 if not yes_to_all_result:
                     yes_to_all_result = wait_for_keypress('c', 'q', 'y')
-
-def ConfigMediapipeDetector(model_path='./models/hand_landmarker.task'):
-    base_options = python.BaseOptions(model_asset_path=model_path)
-    options = vision.HandLandmarkerOptions(base_options=base_options, num_hands=1, min_tracking_confidence=0.5)
-    detector = vision.HandLandmarker.create_from_options(options)
-    return detector
-
 
 def RecordingSetup(config):
     num_samples_per_class = {}

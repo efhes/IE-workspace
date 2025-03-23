@@ -14,41 +14,18 @@ import numpy as np
 import mediapipe as mp
 
 from cameras import CVCamera, PICamera, CameraConfig
-from config import Config
-from config import ConfigMediapipeDetector, RecordingSetup
+from config import Config, RecordingSetup
 from gui import Colors, WindowMessage
-from landmarksLib import draw_landmarks_on_image, GetLandmarksFromImages
 
 ON_RASPBERRY_PI = False
 
 # Instantiate the configuration
-window_title = "Hand gestures recorder"
+window_title = "Image recognition recorder"
 colors = Colors()
-config = Config(classes=['three', 'four', 'five'], num_images_per_class=100, use_landmarks = True)
-cam_config = CameraConfig(FPS=15, resolution='highres')
+config = Config(classes=['bear', 'caveman', 'dinosaur', 'horse'], num_images_per_class=50)
+cam_config = CameraConfig(FPS=30, resolution='highres')
 
-# En MediaPipe, la diferencia principal entre hand_world_landmarks y hand_landmarks radica en el sistema de coordenadas que utilizan para representar los puntos clave de las manos detectadas:
-
-# - hand_landmarks:
-# Proporciona las coordenadas de los puntos clave de la mano en un espacio de coordenadas normalizado, donde los valores X e Y se encuentran en el rango [0.0, 1.0].
-# Este espacio de coordenadas está relativo a la imagen de entrada. Es decir, las coordenadas están normalizadas con respecto a las dimensiones de la imagen.
-# No proporciona información sobre la profundidad (coordenada Z) en un espacio 3D real.
-# Es útil para aplicaciones donde solo se necesita la posición relativa de los puntos clave en la imagen 2D.
-
-# - hand_world_landmarks:
-# Proporciona las coordenadas de los puntos clave de la mano en un espacio de coordenadas 3D del mundo real.
-# Las coordenadas X, Y y Z se expresan en metros, con el origen ubicado aproximadamente en la raíz de la mano.
-# Esto permite obtener información sobre la posición y orientación 3D de la mano en el espacio.
-# Es esencial para aplicaciones que requieren un seguimiento preciso de la mano en 3D, como la realidad virtual, la realidad aumentada o el control de gestos 3D.
-# En resumen:
-
-# hand_landmarks son para coordenadas 2D relativas a la imagen.
-# hand_world_landmarks son para coordenadas 3D en el mundo real.
-# Esta diferencia es muy importante dependiendo de la aplicación que se le quiera dar a la detección de manos. Si unicamente se quiere detectar movimientos relativos dentro de una imagen, con hand_landmarks es suficiente, pero si se quiere trabajar con el movimiento de las manos en un espacio 3D, es necesario utilizar hand_world_landmarks.
-
-def DisplayPreviewScreen(cam, detector, messages=None):
-    #cam.start()
-    
+def DisplayPreviewScreen(cam, messages=None):    
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.
         #image = cam.capture_array("main")
         image = cam.read_frame()
@@ -57,20 +34,6 @@ def DisplayPreviewScreen(cam, detector, messages=None):
             print("Waiting for camera input")
             continue
 
-        if config.use_landmarks:
-            # Convert the image to RGB for Mediapipe
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)    
-
-            # Process the image and get hand landmarks
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-            detection_result = detector.detect(mp_image)
-
-            if detection_result.hand_landmarks:
-                #image_rgb, landmark_values = get_XYZ(results, image_rgb)
-                image, landmark_values = draw_landmarks_on_image(image, detection_result)
-                
-        #image = cv2.flip(image,+1) #displays image in mirror format
-        
         messages.ShowWindowMessages(image)
         
         cv2.imshow(window_title, image)
@@ -78,18 +41,15 @@ def DisplayPreviewScreen(cam, detector, messages=None):
         key = cv2.waitKey(int(1 / cam_config.FPS * 1000)) & 0xFF
         
         if key == ord("s"):
-            #cam.stop()
             break
         elif key ==  ord('q'):
             exit()
 
-def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
+def StartRecordingImages(cam, num_images_to_record, messages=None):
     # num of images recorded counter
     n_recorded = 0
     recorded_images = []
     recording_frame = True
-    
-    #cam.start()
     
     started = time.time()
     last_save = started
@@ -119,23 +79,11 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
         
         if now - last_save > 0.5: 
             # Get image dimensions
-            height, width, _ = image_rgb.shape
+            height, width, _ = image.shape
 
             # Draw bounding rectangle
             bounding_rect = [(10, 10), (width-20, height-20)]
-            cv2.rectangle(image_rgb, bounding_rect[0], bounding_rect[1], colors.color['red'], 2)
-       
-        if config.use_landmarks:
-            # Convert the image to RGB for Mediapipe
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
-            # Process the image and get hand landmarks
-            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
-            detection_result = detector.detect(mp_image)
-
-            if detection_result.hand_landmarks:
-                #image_rgb, landmark_values = get_XYZ(results, image_rgb)
-                image, landmark_values = draw_landmarks_on_image(image, detection_result)
+            cv2.rectangle(image, bounding_rect[0], bounding_rect[1], colors.color['red'], 2)
         
         messages.msg[1]['text'] = "Stored images: " + str(n_recorded + 1) + "/" + str(num_images_to_record)
         messages.ShowWindowMessages(image)
@@ -147,7 +95,6 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
             time.sleep(1)
             break
 
-        #key = cv2.waitKey(1) & 0xFF
         key = cv2.waitKey(int(1 / cam_config.FPS * 1000)) & 0xFF
 
         # if the `q` key was pressed, break from the loop
@@ -184,9 +131,6 @@ def main():
     # Create default dataset folders
     config.CreateDefaultDatasetFolders()
 
-    # Create the detector
-    detector = ConfigMediapipeDetector('./models/hand_landmarker.task')
-
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
         cam = PICamera(recording_res=cam_config.resolution)
@@ -209,7 +153,7 @@ def main():
             txt3 = "or \'q\' to exit.", pos3 = (70, 300), col3 = colors.color['green'])
         
         # Display preview screen
-        DisplayPreviewScreen(cam, detector, preview_msgs)
+        DisplayPreviewScreen(cam, preview_msgs)
 
         recording_msgs = WindowMessage(
             txt1 = "Recording in progress...", pos1 = (20, 40), col1 = colors.color['red'],
@@ -217,7 +161,7 @@ def main():
             txt3 = "", pos3 = (20, 120), col3 = colors.color['red'])
         
         # Start recording images
-        recorded_images = StartRecordingImages(cam, detector, num_samples_per_class['total'], recording_msgs)
+        recorded_images = StartRecordingImages(cam, num_samples_per_class['total'], recording_msgs)
 
         # Save images to disk
         SaveRecordedImagesToDisk(recorded_images, c, num_samples_per_class)
@@ -230,7 +174,7 @@ def main():
             txt3 = "", pos3 = (70, 300), col3 = colors.color['blue'])
 
     # Display final message
-    DisplayPreviewScreen(cam, detector, post_msgs)
+    DisplayPreviewScreen(cam, post_msgs)
 
     # Release resources
     cam.stop()
