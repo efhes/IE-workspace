@@ -29,7 +29,7 @@ class Config:
         # Total number of images per class in the dataset
         self.num_images_per_class = num_images_per_class
 
-        # Percentage of the recorded images that will be used for training (rest for test)
+        # Percentage of the recorded images that will be used for training (rest for val)
         self.training_percentage = training_percentage
 
         # Flag to save images with landmarks
@@ -52,7 +52,7 @@ class Config:
                 if not yes_to_all_result:
                     yes_to_all_result = wait_for_keypress('c', 'q', 'y')
             
-            new_dir = os.path.join(self.dataset_dir, "test", c)
+            new_dir = os.path.join(self.dataset_dir, "val", c)
             try:
                 os.makedirs(new_dir)
             except:
@@ -67,7 +67,7 @@ class Config:
 def RecordingSetup(config):
     num_samples_per_class = {}
     num_samples_per_class['train'] = int(config.num_images_per_class * config.training_percentage/100)
-    num_samples_per_class['test']  = config.num_images_per_class - num_samples_per_class['train']
+    num_samples_per_class['val']  = config.num_images_per_class - num_samples_per_class['train']
     num_samples_per_class['total'] = config.num_images_per_class
 
     print('\n[NEW DATASET RECORDING]')
@@ -78,6 +78,6 @@ def RecordingSetup(config):
     print('\t- %d samples for training (i.e. %0.2f%%) and %d for testing (i.e. %0.2f%%)' % 
           (num_samples_per_class['train'], 
            config.training_percentage, 
-           num_samples_per_class['test'], 
+           num_samples_per_class['val'], 
            100-config.training_percentage))
     return num_samples_per_class

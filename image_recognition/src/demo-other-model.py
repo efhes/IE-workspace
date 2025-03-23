@@ -1,5 +1,17 @@
-import time
+import sys
+import os
 
+# We add the common folder to the path
+# This folder contains the libraries that are shared between the different demos
+# This way we can import them without duplicating code
+lib_path = os.path.abspath("../common/")
+sys.path.append(lib_path)
+
+#Ahora puedes importar tus modulos.
+from cameras import CVCamera, PICamera, CameraConfig
+from gui import Colors, WindowMessage
+
+import time
 import torch
 import torch.nn as nn
 import numpy as np
@@ -15,7 +27,12 @@ from imutils.video import FPS
 import torch.backends.cudnn as cudnn
 import matplotlib.pyplot as plt
 
-def class_id_to_label(i):
+ON_RASPBERRY_PI = False
+
+window_title = "Image recognition demonstrator"
+cam_config = CameraConfig(FPS=30, resolution='highres')
+
+def class_id_to_label(i, labels):
     return labels[i]
     
 def tensor_imshow(inp, title=None):
@@ -31,152 +48,151 @@ def tensor_imshow(inp, title=None):
         plt.title(title)
     #plt.pause(0.001)  # pause a bit so that plots are updated
 
-from picamera2 import Picamera2
+def main():
+    # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
+    if ON_RASPBERRY_PI:
+        cam = PICamera(recording_res=cam_config.resolution)
+        sense_hat = SenseHat()
+        sense_hat.set_rotation(180)
+    else:
+        cam = CVCamera(recording_res=cam_config.resolution, index_cam=1)
+        sense_hat = None
 
-cv2.startWindowThread()
-
-picam2 = Picamera2()
-lsize = (640, 480)
-video_config = picam2.create_video_configuration(
-    #main={"size": (1280, 720), "format": "RGB888"},
-    main={"size": lsize, "format": "RGB888"},
-    lores={"size": lsize, "format": "YUV420"})
-
-picam2.configure(video_config)
-picam2.start()
-
-model_path = '../models/custom_model_ft.pth'
-#model_path = '../models/model_ft-2.pth'
-#model_path = '../models/model_conv.pth'
-with open('./imagenet-simple-labels/imagenet-simple-labels.json') as f:
-    labels = json.load(f)
-
-labels = ['bottle', 'mouse', 'pencilcase', 'raspberry']
-
-num_classes = len(labels)
-COLORS = np.random.uniform(0, 255, size=(len(labels), 3))
-cudnn.benchmark = True
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-torch.backends.quantized.engine = 'qnnpack'
-
-# MobileNet
-preprocess = transforms.Compose([
-    transforms.ToPILImage(),
-    transforms.Resize(256),
-    transforms.CenterCrop(224),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
-
-# MobileNet
-weights = MobileNet_V2_Weights.IMAGENET1K_V1
-
-# EfficientNet
-#preprocess = transforms.Compose([
-#        transforms.ToPILImage(),
-#        weights.transforms(),
-#    ])
-
-# EfficientNet
-#weights = EfficientNet_B0_Weights.IMAGENET1K_V1
-
-#net = models.quantization.mobilenet_v2(pretrained=True, quantize=True)
-#net = models.efficientnet_b0(weights='DEFAULT')
-net = models.mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
-
-print(f'\nModifying pre-trained model: last fc layer updated to {num_classes} classes\n')
-for i in range(num_classes):
-    print(f'\t[{i}][{labels[i]}]')
+    model_path = './models/custom_model_ft.pth'
+    #model_path = '../models/model_conv.pth'
     
-net.classifier[1] = nn.Linear(1280, num_classes) #FFM para MobileNet_v2 fine-tuneado con Colab
-net.load_state_dict(torch.load(model_path, map_location=device))
-net.eval()
+    labels=['bear', 'caveman', 'dinosaur', 'horse']
+    num_classes = len(labels)
 
-# jit model to take it from ~20fps to ~30fps
-net = torch.jit.script(net)
+    colors = Colors()
+    colors.DefineListRandomColorsForLabels(labels + ['None'])
 
-started = time.time()
-last_logged = time.time()
-frame_count = 0
+    cudnn.benchmark = True
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-fps = FPS().start()
+    torch.backends.quantized.engine = 'qnnpack'
 
-with torch.set_grad_enabled(False):
-    while True:
-        # read frame
-        #ret, image = cap.read()
-        #if not ret:
-        #    raise RuntimeError("failed to read frame")
-    
-        # convert opencv output from BGR to RGB
-        #image = image[:, :, [2, 1, 0]]
+    # MobileNet
+    preprocess = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
 
-        #read image 
-        image = picam2.capture_array("main")
+    # MobileNet
+    weights = MobileNet_V2_Weights.IMAGENET1K_V1
+
+    # EfficientNet
+    #preprocess = transforms.Compose([
+    #        transforms.ToPILImage(),
+    #        weights.transforms(),
+    #    ])
+
+    # EfficientNet
+    #weights = EfficientNet_B0_Weights.IMAGENET1K_V1
+
+    #net = models.quantization.mobilenet_v2(pretrained=True, quantize=True)
+    #net = models.efficientnet_b0(weights='DEFAULT')
+    net = models.mobilenet_v2(weights=MobileNet_V2_Weights.DEFAULT)
+
+    print(f'\nModifying pre-trained model: last fc layer updated to {num_classes} classes\n')
+    for i in range(num_classes):
+        print(f'\t[{i}][{labels[i]}]')
         
-        #read image 
-        #image = cv2.imread('/home/pi/workspace/image_recognition/data/DATASET/val/mouse/mouse0000.jpg')
-        
-        # preprocess
-        input_tensor = preprocess(image)
+    net.classifier[1] = nn.Linear(1280, num_classes) #FFM para MobileNet_v2 fine-tuneado con Colab
+    net.load_state_dict(torch.load(model_path, map_location=device))
+    net.eval()
 
-        # create a mini-batch as expected by the model
-        input_batch = input_tensor.unsqueeze(0)
+    # jit model to take it from ~20fps to ~30fps
+    net = torch.jit.script(net)
 
-        # run model
-        output = net(input_batch)
-        # do something with output ...
+    # Start camera
+    cam.start()
 
-        # log model performance
-        frame_count += 1
-        now = time.time()
-        if now - last_logged > 1:
-            current_fps = frame_count / (now-last_logged)
-            print(f"{current_fps} fps")
+    started = time.time()
+    last_logged = time.time()
+    frame_count = 0
+
+    fps = FPS().start()
+
+    pred = 'None'
+    conf = 0
+    current_fps = 0
+
+    with torch.set_grad_enabled(False):
+        while True:
+            #read image
+            image = cam.read_frame()
+            if image is None:
+                # Depending the setup, the camera might need approval to activate, so wait until we start receiving images.
+                print("Waiting for camera input")
+                continue
             
-            last_logged = now
-            frame_count = 0
-        
-            top = list(enumerate(output[0].softmax(dim=0)))
-            top.sort(key=lambda x: x[1], reverse=True)
-            for idx, val in top[:num_classes]:
-                print(f"{val.item()*100:.2f}% {class_id_to_label(idx)}")
-    
-        # Recognition result
-        predicted_id = top[0][0]
-        predicted_conf = top[0][1]
-        
-        # Draw the prediction on the frame
-        #image = imutils.resize(image, width=400)
-        startX=0
-        startY=0
-        endX=200
-        endY=200
-        #image = np.ascontiguousarray(image, dtype=np.uint8)
-        label = "{}: {:.2f}%".format(class_id_to_label(predicted_id), predicted_conf * 100) 
-        text = "{} - fps: {:.2f}".format(label, current_fps)
-        #cv2.rectangle(image, (startX, startY), (endX, endY), COLORS[predicted_id], 2)
-        y = startY - 15 if startY - 15 > 15 else startY + 15
-        pt1 = (int(startX), int(y))
-        cv2.putText(image, text, pt1, cv2.FONT_HERSHEY_SIMPLEX, 0.5, COLORS[predicted_id], 2)
-        
-        # show the output frame
-        cv2.imshow("Result", image)
-        #tensor_imshow(input_tensor)
-        key = cv2.waitKey(1) & 0xFF
+            # log model performance
+            frame_count += 1
+            now = time.time()
+            if now - last_logged > 1:
+                current_fps = frame_count / (now-last_logged)
+                print(f"{current_fps} fps")
+                
+                last_logged = now
+                frame_count = 0
 
-        # if the `q` key was pressed, break from the loop
-        if key == ord("q"):
-            break
+                # preprocess
+                input_tensor = preprocess(image)
 
-        # update the FPS counter
-        fps.update()
+                # create a mini-batch as expected by the model
+                input_batch = input_tensor.unsqueeze(0)
+
+                # run model
+                output = net(input_batch)
+            
+                top = list(enumerate(output[0].softmax(dim=0)))
+                top.sort(key=lambda x: x[1], reverse=True)
+                for idx, val in top[:num_classes]:
+                    print(f"{val.item()*100:.2f}% {class_id_to_label(idx, labels)}")
         
-# stop the timer and display FPS information
-fps.stop()
-print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
-print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+                # Recognition result
+                predicted_id = top[0][0]
+                predicted_conf = top[0][1]
+            
+                #image = np.ascontiguousarray(image, dtype=np.uint8)
+                pred = class_id_to_label(predicted_id, labels)
+                conf = predicted_conf * 100
 
-# do a bit of cleanup
-cv2.destroyAllWindows()
+            
+            class_msgs = WindowMessage(
+                    txt1 = "Predicted class: {} ({:.2f}) - fps: {:.2f}".format(pred, conf, current_fps), pos1 = (10, cam_config.resolution[1]-20), col1 = colors.GetColorForClass(pred),
+                    txt2 = "", pos2 = (0, 0), col2 = colors.color['black'],
+                    txt3 = "", pos3 = (0, 0), col3 = colors.color['black'])
+
+            class_msgs.ShowWindowMessages(image)
+            
+            # show the output frame
+            cv2.imshow(window_title, image)
+            
+            # Press 'q' to quit the program
+            key = cv2.waitKey(int(1 / cam_config.FPS * 1000)) & 0xFF
+
+            # if the `q` key was pressed, break from the loop
+            if key ==  ord('q'):
+                if ON_RASPBERRY_PI:
+                    sense_hat.clear()
+                break
+
+            # update the FPS counter
+            fps.update()
+            
+        # stop the timer and display FPS information
+    fps.stop()
+    print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
+    print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
+
+    # Release resources
+    cam.stop()
+    exit()
+
+if __name__ == "__main__":
+    main()
