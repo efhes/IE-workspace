@@ -8,9 +8,9 @@
 *.jpg
 *.h264
 # We do not keep track of models
-*.h5
+#*.h5
 *.pth
-*.json
+#*.json
 # We do not keep track of zip files
 *.zip
 # We do not keep track of log, txt, lis, bat, out, csv or arff files
