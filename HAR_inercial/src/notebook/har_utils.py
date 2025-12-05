@@ -114,7 +114,7 @@ def Save_CSV_from_Df(df_in, class_mapping, output_csv_filename):
   # Save dataframe
   df_out.to_csv(output_csv_filename, sep = ",", index=False, header=True, float_format=f'%.8f')
 
-  def CalculateCI(num_samples, accuracy):
+def CalculateCI(num_samples, accuracy):
   """
     Calculate confidence interval for a confidence of 95%
     :param num_samples: Number of samples for the set to evaluate
