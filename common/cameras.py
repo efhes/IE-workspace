@@ -56,7 +56,7 @@ class PICamera(Camera):
             self.picam2 = Picamera2()
             self.Preview = Preview
             preview_config = self.picam2.create_preview_configuration(
-                main={"size": recording_res[::-1]},
+                main={"size": recording_res},#recording_res[::-1]},
                 controls={
                     "AwbEnable": False,
                     # "AwbMode": libcamera.controls.AwbModeEnum.Indoor,

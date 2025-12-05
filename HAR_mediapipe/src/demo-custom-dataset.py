@@ -19,11 +19,13 @@ from gui import Colors, WindowMessage
 from landmarksLib import draw_landmarks_on_image
 
 ON_RASPBERRY_PI = False
-MODEL_PATH = "models/Five_Four_Three_CNN1.keras"
+#MODEL_PATH = "models/Five_Four_Three_CNN1.keras"
+MODEL_PATH = "models/PIDS_CNN1.keras"
 
 # Instantiate the configuration
 # Classes to be recognized; ATENTION: 'None' class must be the last one; the others must be specified in the order they were trained (alphabetical order)
-classes=['Five', 'Four', 'Three', 'None']
+#classes=['Five', 'Four', 'Three', 'None']
+classes=['backward', 'forward', 'left', 'right', 'shoot', 'stop', 'None']
 window_title = "Hand gestures recognition demonstrator"
 colors = Colors()
 colors.SelectRandomColorFromListForClasses(classes)

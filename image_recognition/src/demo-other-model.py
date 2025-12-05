@@ -75,14 +75,14 @@ def main():
     # MobileNet
     preprocess = transforms.Compose([
         transforms.ToPILImage(),
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
+        transforms.Resize((256, 256)),  # Evita distorsión
+        #transforms.CenterCrop(224),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
     # MobileNet
-    weights = MobileNet_V2_Weights.IMAGENET1K_V1
+    #weights =  MobileNet_V2_Weights.IMAGENET1K_V1
 
     # EfficientNet
     #preprocess = transforms.Compose([
@@ -100,8 +100,9 @@ def main():
     print(f'\nModifying pre-trained model: last fc layer updated to {num_classes} classes\n')
     for i in range(num_classes):
         print(f'\t[{i}][{labels[i]}]')
-        
-    net.classifier[1] = nn.Linear(1280, num_classes) #FFM para MobileNet_v2 fine-tuneado con Colab
+    
+    num_ftrs = net.classifier[1].in_features
+    net.classifier[1] = nn.Linear(num_ftrs, num_classes)
     net.load_state_dict(torch.load(model_path, map_location=device))
     net.eval()
 
@@ -161,7 +162,6 @@ def main():
                 #image = np.ascontiguousarray(image, dtype=np.uint8)
                 pred = class_id_to_label(predicted_id, labels)
                 conf = predicted_conf * 100
-
             
             class_msgs = WindowMessage(
                     txt1 = "Predicted class: {} ({:.2f}) - fps: {:.2f}".format(pred, conf, current_fps), pos1 = (10, cam_config.resolution[1]-20), col1 = colors.GetColorForClass(pred),

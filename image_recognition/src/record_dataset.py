@@ -17,13 +17,20 @@ from cameras import CVCamera, PICamera, CameraConfig
 from config import Config, RecordingSetup
 from gui import Colors, WindowMessage
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
+
+if ON_RASPBERRY_PI:
+    from sense_hat import SenseHat
+    
+if ON_RASPBERRY_PI:
+    cam_config = CameraConfig(FPS=30, resolution='large')
+else:
+    cam_config = CameraConfig(FPS=30, resolution='highres')
 
 # Instantiate the configuration
 window_title = "Image recognition recorder"
 colors = Colors()
 config = Config(classes=['bear', 'caveman', 'dinosaur', 'horse'], num_images_per_class=50)
-cam_config = CameraConfig(FPS=30, resolution='highres')
 
 def DisplayPreviewScreen(cam, messages=None):    
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.

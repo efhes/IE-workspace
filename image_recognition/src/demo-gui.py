@@ -25,8 +25,16 @@ from imutils.video import FPS
 
 ON_RASPBERRY_PI = False
 
+if ON_RASPBERRY_PI:
+    from sense_hat import SenseHat
+    
 window_title = "Image recognition demonstrator"
-cam_config = CameraConfig(FPS=30, resolution='highres')
+if ON_RASPBERRY_PI:
+    cam_config = CameraConfig(FPS=30, resolution='large')
+else:
+    cam_config = CameraConfig(FPS=30, resolution='highres')
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def class_id_to_label(i, labels):
     return labels[i]
@@ -48,18 +56,20 @@ def main():
     colors = Colors()
     colors.DefineListRandomColorsForLabels(labels + ['None'])
 
-    torch.backends.quantized.engine = 'qnnpack'
-
     preprocess = transforms.Compose([
+        transforms.ToPILImage(),
+        transforms.Resize(256),  # Evita distorsión
+        transforms.CenterCrop(256),
         transforms.ToTensor(),
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
+    # Cargar modelo preentrenado y optimizado
+    torch.backends.quantized.engine = 'qnnpack'
     net = models.quantization.mobilenet_v2(weights=MobileNet_V2_QuantizedWeights.DEFAULT, quantize=True)
-
-    # jit model to take it from ~20fps to ~30fps
-    net = torch.jit.script(net)
-
+    net = torch.jit.script(net).to(device) # jit model to take it from ~20fps to ~30fps
+    net.eval()
+    
     # Start camera
     cam.start()
 
@@ -69,9 +79,7 @@ def main():
 
     fps = FPS().start()
 
-    pred = 'None'
-    conf = 0
-    current_fps = 0
+    pred, conf, current_fps = 'None', 0, 0
 
     with torch.no_grad():
         while True:
@@ -93,7 +101,7 @@ def main():
                 frame_count = 0
             
                 # preprocess
-                input_tensor = preprocess(image)
+                input_tensor = preprocess(image).to(device)
 
                 # create a mini-batch as expected by the model
                 input_batch = input_tensor.unsqueeze(0)

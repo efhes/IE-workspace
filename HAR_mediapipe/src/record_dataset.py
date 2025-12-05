@@ -21,11 +21,18 @@ from landmarksLib import draw_landmarks_on_image, GetLandmarksFromImages
 
 ON_RASPBERRY_PI = False
 
+if ON_RASPBERRY_PI:
+    from sense_hat import SenseHat
+    
+if ON_RASPBERRY_PI:
+    cam_config = CameraConfig(FPS=30, resolution='large')
+else:
+    cam_config = CameraConfig(FPS=30, resolution='highres')
+
 # Instantiate the configuration
 window_title = "Hand gestures recorder"
 colors = Colors()
-config = Config(classes=['three', 'four', 'five'], num_images_per_class=100, use_landmarks = True)
-cam_config = CameraConfig(FPS=15, resolution='highres')
+config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'], num_images_per_class=50, training_percentage=70, use_landmarks = True)
 
 # En MediaPipe, la diferencia principal entre hand_world_landmarks y hand_landmarks radica en el sistema de coordenadas que utilizan para representar los puntos clave de las manos detectadas:
 
@@ -44,7 +51,9 @@ cam_config = CameraConfig(FPS=15, resolution='highres')
 
 # hand_landmarks son para coordenadas 2D relativas a la imagen.
 # hand_world_landmarks son para coordenadas 3D en el mundo real.
-# Esta diferencia es muy importante dependiendo de la aplicación que se le quiera dar a la detección de manos. Si unicamente se quiere detectar movimientos relativos dentro de una imagen, con hand_landmarks es suficiente, pero si se quiere trabajar con el movimiento de las manos en un espacio 3D, es necesario utilizar hand_world_landmarks.
+# Esta diferencia es muy importante dependiendo de la aplicación que se le quiera dar a la detección de manos. 
+# Si unicamente se quiere detectar movimientos relativos dentro de una imagen, con hand_landmarks es suficiente, 
+# pero si se quiere trabajar con el movimiento de las manos en un espacio 3D, es necesario utilizar hand_world_landmarks.
 
 def DisplayPreviewScreen(cam, detector, messages=None):
     #cam.start()
