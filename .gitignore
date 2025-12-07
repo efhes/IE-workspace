@@ -9,7 +9,7 @@
 *.h264
 # We do not keep track of models
 #*.h5
-*.pth
+#*.pth
 #*.json
 # We do not keep track of zip files
 *.zip
