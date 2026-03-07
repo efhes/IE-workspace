@@ -27,7 +27,10 @@ from imutils.video import FPS
 import torch.backends.cudnn as cudnn
 import matplotlib.pyplot as plt
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
+
+if ON_RASPBERRY_PI:
+    from sense_hat import SenseHat
 
 window_title = "Image recognition demonstrator"
 cam_config = CameraConfig(FPS=30, resolution='highres')
@@ -61,7 +64,7 @@ def main():
     model_path = './models/custom_model_ft.pth'
     #model_path = '../models/model_conv.pth'
     
-    labels=['bear', 'caveman', 'dinosaur', 'horse']
+    labels=sorted(['bear', 'caveman', 'dinosaur', 'horse'])
     num_classes = len(labels)
 
     colors = Colors()

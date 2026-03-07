@@ -1,0 +1,6 @@
+extract_XYZ()  data/new_dataset/train/five/   1   data/new_dataset/train/five/five_00001.jpg
+extract_XYZ()  data/new_dataset/train/five/   2   data/new_dataset/train/five/five_00002.jpg
+extract_XYZ()  data/new_dataset/train/five/   3   data/new_dataset/train/five/five_00003.jpg
+extract_XYZ()  data/new_dataset/train/five/   1   data/new_dataset/train/five/five_00001.jpg
+extract_XYZ()  data/new_dataset/train/five/   2   data/new_dataset/train/five/five_00002.jpg
+extract_XYZ()  data/new_dataset/train/five/   3   data/new_dataset/train/five/five_00003.jpg

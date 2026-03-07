@@ -30,7 +30,7 @@ else:
 # Instantiate the configuration
 window_title = "Image recognition recorder"
 colors = Colors()
-config = Config(classes=['bear', 'caveman', 'dinosaur', 'horse'], num_images_per_class=50)
+config = Config(classes=['bear', 'caveman', 'dinosaur', 'horse'], dataset_dir='./data/new_dataset/', num_images_per_class=50, training_percentage=66)
 
 def DisplayPreviewScreen(cam, messages=None):    
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.
