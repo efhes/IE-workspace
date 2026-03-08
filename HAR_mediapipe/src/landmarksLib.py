@@ -302,6 +302,42 @@ def load_individual_class_features_and_create_labeled_csv_dataset(input_mode, ne
   print('\t[CREATING NEW .csv file][%s]' % new_csv_filename)
   df.to_csv(new_csv_filename, index=False)
 
+# Create file CSV and Numpy
+def create_numpy_with_feats_and_csv_with_just_labels(input_mode, new_dataset_path, NO_GESTURE=False):
+  if NO_GESTURE:
+    aux = '_plus_NO_GESTURE'
+  else:
+    aux = ''
+
+  print('\n[create_numpy_with_feats_and_csv_with_just_labels][%s]' % input_mode)
+  input_file = new_dataset_path + '/' + input_mode + '_dataset_with_labels' + aux + '.csv'
+  print('\t[input_file][%s]' % input_file)
+  df = pd.read_csv(input_file)
+  num_points = 42
+
+  new_df = pd.DataFrame([], columns=["frame", "label"])
+  data = np.zeros((len(df), num_points))
+  fea_list = [["x" + str(j), "y" + str(j)] for j in range(int(num_points / 2))]
+  flat_fea_list = [item for sublist in fea_list for item in sublist]
+
+  for i in range(len(df)):
+      data[i] = df.loc[i][flat_fea_list]
+      new_df.loc[i] = [df["frame"][i], df["label"][i]]
+
+  # Save NEW .csv which includes just the labels information
+  new_csv_filename = new_dataset_path + '/' + input_mode + '_labels' + aux + '.csv'
+  print('\t[NEW .csv][%s]' % new_csv_filename)
+  new_df.to_csv(new_csv_filename, index=False)
+
+  # Save NEW .npy which includes only the features
+  new_npy_filename = new_dataset_path + '/' + input_mode + '_dataset' + aux + '.npy'
+  print('\t[NEW .npy][%s]' % new_npy_filename)
+  np.save(new_npy_filename, data)
+  
+  # This function takes a NumPy array data as input and returns a new array new_data with normalized landmarks.
+# In summary, this function takes hand landmark data, assumes that the first two coordinates represent
+# the center of the hand, and shifts the remaining landmarks' coordinates so that the center becomes the new origin.
+# This can be useful for normalizing hand landmark data for further analysis or processing.
 def normalize_from_0_landmark(data):
   # We create a copy of the input data array to ensure that the original data is not modified,
   # and the modifications are made to the copy
