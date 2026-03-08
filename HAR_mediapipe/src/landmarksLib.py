@@ -44,35 +44,36 @@ def draw_landmarks_on_image(rgb_image, detection_result):
     handedness_list = detection_result.handedness
     annotated_image = np.copy(rgb_image)
     
+    landmark_values = []
+    
     # Loop through the detected hands to visualize.
     for idx in range(len(hand_landmarks_list)):
-        hand_landmarks = hand_landmarks_list[idx]
-        handedness = handedness_list[idx]
+      hand_landmarks = hand_landmarks_list[idx]
+      handedness = handedness_list[idx]
 
-        # Draw the hand landmarks.
-        mp_drawing.draw_landmarks(
-            annotated_image,
-            hand_landmarks,
-            mp_hands.HAND_CONNECTIONS,
-            mp_drawing_styles.get_default_hand_landmarks_style(),
-            mp_drawing_styles.get_default_hand_connections_style())
+      # Draw the hand landmarks.
+      mp_drawing.draw_landmarks(
+          annotated_image,
+          hand_landmarks,
+          mp_hands.HAND_CONNECTIONS,
+          mp_drawing_styles.get_default_hand_landmarks_style(),
+          mp_drawing_styles.get_default_hand_connections_style())
 
-        # Get the top left corner of the detected hand's bounding box.
-        height, width, _ = annotated_image.shape
-        x_coordinates = [landmark.x for landmark in hand_landmarks]
-        y_coordinates = [landmark.y for landmark in hand_landmarks]
-        text_x = int(min(x_coordinates) * width)
-        text_y = int(min(y_coordinates) * height) - MARGIN
+      # Get the top left corner of the detected hand's bounding box.
+      height, width, _ = annotated_image.shape
+      x_coordinates = [landmark.x for landmark in hand_landmarks]
+      y_coordinates = [landmark.y for landmark in hand_landmarks]
+      text_x = int(min(x_coordinates) * width)
+      text_y = int(min(y_coordinates) * height) - MARGIN
 
-        # Draw handedness (left or right hand) on the image.
-        cv2.putText(annotated_image, f"{handedness[0].category_name}",
-                    (text_x, text_y), cv2.FONT_HERSHEY_DUPLEX,
-                    FONT_SIZE, HANDEDNESS_TEXT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
+      # Draw handedness (left or right hand) on the image.
+      cv2.putText(annotated_image, f"{handedness[0].category_name}",
+                  (text_x, text_y), cv2.FONT_HERSHEY_DUPLEX,
+                  FONT_SIZE, HANDEDNESS_TEXT_COLOR, FONT_THICKNESS, cv2.LINE_AA)
 
-        landmark_values = []
-        # Arrange the landmarkks as an array landmark_values[i] = [x, y]
-        for landmark in hand_landmarks:
-            landmark_values.append([landmark.x, landmark.y])
+      # Arrange the landmarkks as an array landmark_values[i] = [x, y]
+      for landmark in hand_landmarks:
+        landmark_values.append([landmark.x, landmark.y])
 
     return annotated_image, landmark_values
 
