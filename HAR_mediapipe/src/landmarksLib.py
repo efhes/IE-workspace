@@ -82,7 +82,7 @@ def GetLandmarksListFromDetectionResult(detection_result):
     
     if detection_result.hand_landmarks is not None:
         for hand_landmarks in detection_result.hand_landmarks:
-            for landmark in hand_landmarks.landmark:
+            for landmark in hand_landmarks:
                 landmark_values.append([landmark.x, landmark.y])
     else:
         # If no hand landmarks are detected, we return a list of 21 pairs of zeros
@@ -196,6 +196,7 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
             frame_number = frame_number.split("_")[1]
 
             # We add the image label, the frame number, and the image path to the DataFrame
+            print(f"\timages_class = {images_class}, frame_number = {frame_number}, path_img = {path_img}")
             new_row = pd.DataFrame([df_landmark_values + [images_class, frame_number, path_img]], columns=df_columns)
 
             if successful_detections_df.empty:
