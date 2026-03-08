@@ -96,44 +96,49 @@ def GetLandmarksListFromDetectionResult(detection_result):
 # extracts the X and Y coordinates of the landmarks,
 # and creates a DataFrame containing this information along with additional metadata.
 # The DataFrame is then saved to a CSV file, and the function handles exceptions and logs errors encountered during the process.
-def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder, images_class, out_path, config):
+def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder, images_class, landmarks_path, annotations_path, config):
   
     columns = [["x" + str(i), "y" + str(i)] for i in range(config.num_landmarks)]  # [x0, y0],[x1,y1],[x2,y2]...
     columns = [item for sublist in columns for item in sublist]  # ['x0', 'y0', 'x1', 'y1' ....
     df_columns = columns + ["label", "frame", "path"]
 
-    print('\n[GetLandmarksFromImages]')
-    print('\t[files][%s]' % str(IMAGE_FILES))
-    print('\t[path][%s]' % images_path)
-    print('\t[out_file][%s]' % out_path)
-    print('\t[columns][%s]' % str(df_columns))
-    print('\n')
-
     if not os.path.exists(images_path):
-        print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % images_path)
-        os.makedirs(images_path)
+        # If the folder where the images are stored does not exist, we abort and log the event
+        # This is an error because we cannot process the images if the folder does not exist
+        print('\t[ERROR!!!][%s][FOLDER DOES NOT EXIST!!! ABORTING...]' % images_path)
+        with open('HAR_mediapipe/logs.txt', 'a') as f:
+            print('GetLandmarksFromImages()', images_path, file=f)
+        return None     
 
-    out_landmarks_path = images_path + '/landmarks/'
+    out_landmarks_path = landmarks_path + '/' + images_subfolder + '/'
     
     if not os.path.exists(out_landmarks_path):
-        print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_landmarks_path)
+        print('\t[%s][Folder does not exist!!! We create it!]' % out_landmarks_path)
         os.makedirs(out_landmarks_path)
         
     if config.save_images:
-        out_path_imgs = images_path + '/annotated_images/'
+        out_path_imgs = annotations_path + '/' + images_subfolder + '/' 
      
         if not os.path.exists(out_path_imgs):
-            print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_path_imgs)
+            print('\t[%s][Folder does not exist!!! We create it!]' % out_path_imgs)
             os.makedirs(out_path_imgs)
         
         out_path_imgs = out_path_imgs + images_class + '/'
         
         if not os.path.exists(out_path_imgs):
-            print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_path_imgs)
+            print('\t[%s][Folder does not exist!!! We create it!]' % out_path_imgs)
             os.makedirs(out_path_imgs)
 
     out_path_df = os.path.join(out_landmarks_path + '/' + images_subfolder + '_' + images_class + '_poses_landmarks.csv')
-    print('\t[New file][%s]' % out_path_df)
+    print('\t[New .csv file with landmarks][%s]' % out_path_df)
+
+    print('\n[GetLandmarksFromImages]')
+    print('\t[files][%s]' % str(IMAGE_FILES))
+    print('\t[input images in path][%s]' % images_path)
+    print('\t[landmarks out in path][%s]' % landmarks_path)
+    print('\t[annotations out in path][%s]' % annotations_path)
+    print('\t[columns][%s]' % str(df_columns))
+    print('\n')
 
     successful_detections_df = pd.DataFrame([], columns=df_columns)
 
@@ -166,21 +171,32 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
         detection_result = detector.detect(mp_image)
 
         landmark_values = []
-        #if results.multi_hand_landmarks is None:
-        if detection_result.hand_landmarks is None:
+        
+        # Test if we have successfully detected a hand in the image, if not we add a row of zeros to the DataFrame and log the error
+        if detection_result is None or detection_result.hand_landmarks is None:
             # We have NOT successfully detected a hand in the image
             num_failed_detections = num_failed_detections + 1
 
-            for i in range(config.num_landmarks):
-                landmark_values += [0, 0]
-            print('\t[ERROR!!!][NO LANDMARKS!!!][%s]' % path_img)
-        else:
+            print(f'\t[ERROR!!!][{num_failed_detections}][{path_img}][FAILED TO DETECT HAND!!]')
+            with open('HAR_mediapipe/logs.txt', 'a') as f:
+                print('GetLandmarksFromImages()', images_path, idx + 1, file, file=f)
+        else:            
+            landmark_values = GetLandmarksListFromDetectionResult(detection_result)
+            
+            # If landmark_values is empty we iterate and ignore current sample
+            if not landmark_values:
+                # We have NOT successfully detected a hand in the image
+                num_failed_detections = num_failed_detections + 1
+
+                print(f'\t[ERROR!!!][{num_failed_detections}][{path_img}][FAILED TO DETECT HAND!!]')
+                with open('HAR_mediapipe/logs.txt', 'a') as f:
+                    print('GetLandmarksFromImages()', images_path, idx + 1, file, file=f)
+                continue
+            
             # We have successfully detected a hand in the image
             num_successful_detections = num_successful_detections + 1
             print(f'\t[{num_successful_detections}][{path_img}][SUCCESS!!]')
 
-            landmark_values = GetLandmarksListFromDetectionResult(detection_result)
-            
             if config.save_images:
                 image, landmark_values = draw_landmarks_on_image(image, detection_result)
                 out_annotated_image_path = out_path_imgs + file.split(".")[0] + '.jpg'
@@ -250,7 +266,7 @@ def extract_classes_list_from_folders(folders_path, new_dataset_path):
 
   return classes
 
-def load_individual_class_features_and_create_labeled_csv_dataset(input_mode, root_path, new_dataset_path):
+def load_individual_class_features_and_create_labeled_csv_dataset(input_mode, new_dataset_path, landmarks_path):
   classes_list_filename = new_dataset_path + '/' + input_mode + '_classes_list.txt'
 
   # Load file with classes
@@ -261,22 +277,27 @@ def load_individual_class_features_and_create_labeled_csv_dataset(input_mode, ro
 
   # Load the first
   j = 0
-  common_landmarks_folder = new_dataset_path + '/landmarks/'
-  csv_filename = common_landmarks_folder + input_mode + '_' + classes_list.loc[j]['symbol'] + '_poses_landmarks.csv'
+  common_landmarks_folder = landmarks_path
+  csv_filename = common_landmarks_folder + input_mode + '/' + input_mode + '_' + classes_list.loc[j]['symbol'] + '_poses_landmarks.csv'
   print('\t[LOAD .csv file with landmarks][%s]' % csv_filename)
   df = pd.read_csv(csv_filename)
   df['label'] = np.ones(len(df)) * classes_list.loc[j]["label"]
 
   # Load the rest
   for j in range(1, len(classes_list)):
-    csv_filename = common_landmarks_folder + input_mode + '_' + classes_list.loc[j]['symbol'] + '_poses_landmarks.csv'
+    csv_filename = common_landmarks_folder + input_mode + '/' + input_mode + '_' + classes_list.loc[j]['symbol'] + '_poses_landmarks.csv'
     print('\t[LOAD .csv file with landmarks][%s]' % csv_filename)
     current_df = pd.read_csv(csv_filename)
     current_df['label'] = np.ones(len(current_df)) * classes_list.loc[j]['label']
     df = pd.concat([df, current_df])
 
   if not os.path.exists(new_dataset_path):
-      os.makedirs(new_dataset_path)
+      # If the folder where the new dataset will be saved does not exist, this is an major error because we cannot save the new dataset, so we abort and log the event
+      print('\t[ERROR!!!][%s][FOLDER DOES NOT EXIST!!! ABORTING...]' % new_dataset_path)
+      with open('HAR_mediapipe/logs.txt', 'a') as f:
+          print('load_individual_class_features_and_create_labeled_csv_dataset()', new_dataset_path, file=f)
+      return None
+  
   new_csv_filename = new_dataset_path + '/' + input_mode + '_dataset_with_labels.csv'
   print('\t[CREATING NEW .csv file][%s]' % new_csv_filename)
   df.to_csv(new_csv_filename, index=False)

@@ -1,0 +1,7 @@
+Model Type: CNN1
+Normalization Type: None
+Accuracy: 0.9042553191489362
+F-measure (Unweighted): 0.8141109168917845
+F-measure (Weighted): 0.8795919816344401
+Execution Time: 48.987728118896484 seconds
+

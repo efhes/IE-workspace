@@ -1,0 +1,6 @@
+backward
+forward
+left
+right
+shoot
+stop
