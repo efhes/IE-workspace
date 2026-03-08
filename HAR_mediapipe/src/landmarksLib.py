@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pandas as pd
 import mediapipe as mp
-from mediapipe import solutions
-from mediapipe.framework.formats import landmark_pb2
+#from mediapipe import solutions
+#from mediapipe.framework.formats import landmark_pb2
 
 MARGIN = 10  # pixels
 FONT_SIZE = 1
@@ -95,13 +95,13 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
     print('\t[columns][%s]' % str(df_columns))
     print('\n')
 
-    if not os.path.exists(out_path):
-        print('\t[New folder][%s]' % out_path)
-        os.makedirs(out_path)
+    if not os.path.exists(images_path):
+        print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % images_path)
+        os.makedirs(images_path)
 
-    out_landmarks_path = out_path + '/landmarks/'
+    out_landmarks_path = images_path + '/landmarks/'
     if not os.path.exists(out_landmarks_path):
-        print('\t[New folder][%s]' % out_landmarks_path)
+        print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_landmarks_path)
         os.makedirs(out_landmarks_path)
 
     out_path_df = os.path.join(out_landmarks_path + '/' + images_subfolder + '_' + images_class + '_poses_landmarks.csv')
@@ -113,24 +113,22 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
     num_failed_detections = 0
 
     for idx, file in enumerate(IMAGE_FILES):
-        path_img = images_path + '/' + images_subfolder + '/' + images_class + '/' + file
-        # catch exception if the image is not found
-        try:
-            image = cv2.imread(path_img)
+        path_img = images_path + '/' + images_class + '/' + file
         
-        except FileNotFoundError:
-            print(f"Error: File not found at {path_img}.")
-            with open('logs.txt', 'a') as f:
-                print('extract_XYZ() ', images_path, ' ', idx + 1, ' ', file, file=f)
-            return None
-        except cv2.error as e: # Catch OpenCV specific errors.
-            print(f"OpenCV Error: {e}")
-            return None
-        except Exception as e: # Catch any other potential exceptions.
-            print(f"An unexpected error occurred: {e}")
-            return None
+        if not os.path.exists(path_img):
+          print(f"File does not exist: {path_img}")
+          return None
+
+        # Load the input image.
+        image = cv2.imread(path_img)
         
-        image_height, image_width, _ = image.shape
+        if image is None:
+          print(f"Error: image could not be loaded: {path_img}")
+          with open('logs.txt', 'a') as f:
+            print('extract_XYZ()', images_path, idx + 1, file, file=f)
+          return None
+        
+        #image_height, image_width, _ = image.shape
 
         # Convert the BGR image to RGB and processes each image to detect hand landmarks using MediaPipe Hands
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
