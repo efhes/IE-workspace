@@ -77,6 +77,19 @@ def draw_landmarks_on_image(rgb_image, detection_result):
 
     return annotated_image, landmark_values
 
+def GetLandmarksListFromDetectionResult(detection_result):
+    landmark_values = []
+    
+    if detection_result.hand_landmarks is not None:
+        for hand_landmarks in detection_result.hand_landmarks:
+            for landmark in hand_landmarks.landmark:
+                landmark_values.append([landmark.x, landmark.y])
+    else:
+        # If no hand landmarks are detected, we return a list of 21 pairs of zeros
+        landmark_values = [[0, 0] for _ in range(21)]
+    
+    return landmark_values
+
 # GetLandmarksFromImages function
 # The function takes a list of image file names,
 # processes each image to detect hand landmarks using MediaPipe Hands,
@@ -101,9 +114,23 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
         os.makedirs(images_path)
 
     out_landmarks_path = images_path + '/landmarks/'
+    
     if not os.path.exists(out_landmarks_path):
         print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_landmarks_path)
         os.makedirs(out_landmarks_path)
+        
+    if config.save_images:
+        out_path_imgs = images_path + '/annotated_images/'
+     
+        if not os.path.exists(out_path_imgs):
+            print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_path_imgs)
+            os.makedirs(out_path_imgs)
+        
+        out_path_imgs = out_path_imgs + images_class + '/'
+        
+        if not os.path.exists(out_path_imgs):
+            print('\t[%s][FOLDER DOES NOT EXIST!!! WE HAVE CREATED IT]' % out_path_imgs)
+            os.makedirs(out_path_imgs)
 
     out_path_df = os.path.join(out_landmarks_path + '/' + images_subfolder + '_' + images_class + '_poses_landmarks.csv')
     print('\t[New file][%s]' % out_path_df)
@@ -150,13 +177,16 @@ def GetLandmarksFromImages(detector, IMAGE_FILES, images_path, images_subfolder,
         else:
             # We have successfully detected a hand in the image
             num_successful_detections = num_successful_detections + 1
-            
-            # This function returns already normalized landmarks
-            image, landmark_values = draw_landmarks_on_image(image, detection_result)
+            print(f'\t[{num_successful_detections}][{path_img}][SUCCESS!!]')
 
+            landmark_values = GetLandmarksListFromDetectionResult(detection_result)
+            
             if config.save_images:
+                image, landmark_values = draw_landmarks_on_image(image, detection_result)
+                out_annotated_image_path = out_path_imgs + file.split(".")[0] + '.jpg'
                 # We save the annotated images to a specified output directory
-                cv2.imwrite(out_path_imgs + file.split(".")[0] + '.jpg', image)
+                cv2.imwrite(out_annotated_image_path, image)
+                print(f'\t[{out_annotated_image_path}][ANNOTATED IMAGE SAVED!!]')
             
             # Only samples with a successful detection result are stored
             # We first unwrap landmark_values to a arrange them in a single row before passing them to the DataFrame
