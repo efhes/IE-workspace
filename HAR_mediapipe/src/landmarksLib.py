@@ -361,3 +361,35 @@ def normalize_from_0_landmark(data):
         new_data[i, k] = data[i, k] - x_center
         new_data[i, k + 1] = data[i, k + 1] - y_center
   return new_data
+
+def ArrangeInputDataForNetwork (x_data):
+  # x_data is expected as (num_samples, num_features_flat), where features are interleaved as x0,y0,x1,y1,...
+  if debug:
+    print('x_data')
+    print(x_data.shape)
+    print(x_data)
+
+  # Allocate (num_samples, num_landmarks, 2) to separate x/y coordinates per landmark.
+  x_data_reshaped = np.zeros((x_data.shape[0],
+                              int(x_data.shape[1] / 2),
+                              2))
+  if debug:
+    print('x_data_reshaped')
+    print(x_data_reshaped.shape)
+    print(x_data_reshaped)
+
+  # Split even columns into x channel and odd columns into y channel.
+  for i in range(len(x_data)):
+    x_data_reshaped[i, :, 0] = x_data[i, 0::2]
+    x_data_reshaped[i, :, 1] = x_data[i, 1::2]
+
+  # Add a final singleton channel dimension for CNN-style input: (N, landmarks, 2, 1).
+  x_data_out = np.reshape(x_data_reshaped, (x_data_reshaped.shape[0], x_data_reshaped.shape[1], x_data_reshaped.shape[2], 1))
+
+  if debug:
+    print('x_data_out')
+    print(x_data_out.shape)
+    print(x_data_out)
+
+  # Return tensor ready for network input.
+  return x_data_out
