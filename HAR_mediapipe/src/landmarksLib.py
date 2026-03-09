@@ -6,6 +6,16 @@ import mediapipe as mp
 #from mediapipe import solutions
 #from mediapipe.framework.formats import landmark_pb2
 
+""" 
+Así se fuerza el recargo de la librería después de modificarla, para que los cambios se reflejen en el notebook sin necesidad de reiniciar el kernel.
+import importlib
+import landmarksLib  # La librería que ya tenías cargada
+import evaluation
+
+# Después de modificar el código de la librería:
+importlib.reload(landmarksLib)
+importlib.reload(evaluation)
+ """
 mp_hands = mp.tasks.vision.HandLandmarksConnections
 mp_drawing = mp.tasks.vision.drawing_utils
 mp_drawing_styles = mp.tasks.vision.drawing_styles
