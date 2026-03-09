@@ -372,7 +372,7 @@ def normalize_from_0_landmark(data):
         new_data[i, k + 1] = data[i, k + 1] - y_center
   return new_data
 
-def ArrangeInputDataForNetwork (x_data):
+def ArrangeInputDataForNetwork (x_data, debug = False):
   # x_data is expected as (num_samples, num_features_flat), where features are interleaved as x0,y0,x1,y1,...
   if debug:
     print('x_data')
