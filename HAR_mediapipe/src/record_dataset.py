@@ -8,7 +8,6 @@ lib_path = os.path.abspath("../common/")
 sys.path.append(lib_path)
 
 import cv2
-import os
 import time
 import numpy as np
 import mediapipe as mp
