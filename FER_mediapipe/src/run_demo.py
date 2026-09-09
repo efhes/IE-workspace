@@ -2,27 +2,45 @@ print("Loading dependencies... (It might take a while the first time)")
 import keras
 import cv2
 import os
+import sys
 import time
 import numpy as np
 import mediapipe as mp
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
-from cameras import CVCamera, PICamera
+
+# We add the common folder to the path
+# This folder contains the libraries that are shared between the different demos
+# This way we can import them without duplicating code
+lib_path = os.path.abspath("../common/")
+sys.path.append(lib_path)
+
+from cameras import CVCamera, PICamera, CameraConfig
+from config import Config
+from config import ConfigMediapipeDetector, RecordingSetup
+from gui import Colors, WindowMessage
+
 from landmarks_utils import (
     face_get_XYZ,
     normalize_L0,
     normalize_size,
 )
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
+
 if ON_RASPBERRY_PI:
     from sense_hat import SenseHat
 
+if ON_RASPBERRY_PI:
+    cam_config = CameraConfig(FPS=30, resolution='large')
+else:
+    cam_config = CameraConfig(FPS=30, resolution='highres')
 
-# RESOLUTIONS
-HIGHRES_SIZE = (1280, 720)
-LARGE_SIZE = (640, 480)
-SMALL_SIZE = (320, 200)
+# Instantiate the configuration
+window_title = "Face expressions recorder"
+colors = Colors()
+config = Config(classes=['happy', 'sad', 'angry', 'surprise'],
+                use_landmarks = True) # Set to True if you want to use Mediapipe for landmark detection
 
 # COLORS
 GREEN = (0, 255, 0)
@@ -110,13 +128,8 @@ def main():
     model = keras.models.load_model(MODEL_PATH)
     print("Model loaded!")
 
-    # Load mediapipe Face Mesh utility for landmark extraction
-    mp_detector = mp.solutions.face_mesh.FaceMesh(
-        static_image_mode=False,
-        max_num_faces=1,
-        refine_landmarks=True,
-        min_detection_confidence=0.5,
-    )
+    # Create the detector
+    mp_detector = ConfigMediapipeDetector('./models/face_landmarker.task')
 
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:

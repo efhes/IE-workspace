@@ -21,7 +21,7 @@ from config import Config
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
 ON_SENSE_HAT = False
 
 if ON_RASPBERRY_PI:

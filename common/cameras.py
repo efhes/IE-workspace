@@ -82,6 +82,6 @@ class PICamera(Camera):
     def read_frame(self):
         image_bgr = self.picam2.capture_array("main")
         # Depending on the raspberry orientation
-        image_bgr = cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        #image_bgr = cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
         image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
         return image_rgb
