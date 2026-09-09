@@ -54,14 +54,14 @@ class PICamera(Camera):
             import libcamera
 
             self.picam2 = Picamera2()
-            self.Preview = Preview
+            #self.Preview = Preview
             preview_config = self.picam2.create_preview_configuration(
-                main={"size": recording_res},#recording_res[::-1]},
+                main={"size": recording_res, "format": "RGB888"},#recording_res[::-1]},
                 controls={
-                    "AwbEnable": False,
+                    "AwbEnable": True,
                     # "AwbMode": libcamera.controls.AwbModeEnum.Indoor,
-                    "AwbMode": libcamera.controls.AwbModeEnum.Auto,
-                    "AnalogueGain": 1.0,
+                    #"AwbMode": libcamera.controls.AwbModeEnum.Auto,
+                    #"AnalogueGain": 1.0,
                 },
             )
             self.picam2.configure(preview_config)
@@ -75,13 +75,16 @@ class PICamera(Camera):
     def start(self):
         # self.picam2.start_preview(self.Preview.QTGL)
         self.picam2.start()
+        sleep(2)  # Wait for the camera to warm up
 
     def close(self):
         self.picam2.close()
 
     def read_frame(self):
-        image_bgr = self.picam2.capture_array("main")
-        # Depending on the raspberry orientation
-        #image_bgr = cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        # image_bgr = self.picam2.capture_array("main")
+        # # Depending on the raspberry orientation
+        # #image_bgr = cv2.rotate(image_bgr, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        # image_rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+        # return image_rgb
+        image_rgb = self.picam2.capture_array("main")
         return image_rgb
