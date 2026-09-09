@@ -1,24 +1,40 @@
+from pathlib import Path
 import sys
 import os
-
-# We add the common folder to the path
-# This folder contains the libraries that are shared between the different demos
-# This way we can import them without duplicating code
-lib_path = os.path.abspath("../common/")
-sys.path.append(lib_path)
-
 import cv2
 import time
 import numpy as np
 import mediapipe as mp
 
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+
+root_path = os.getcwd()
+path_har = os.path.join(root_path, "HAR_mediapipe", "src")
+path_common = os.path.join(root_path, "common")
+
+# 3. Añadirlas al path y verificar si existen
+for p in [path_har, path_common]:
+    if p not in sys.path:
+        sys.path.append(p)
+    if not os.path.exists(p):
+        print(f"⚠️ ¡OJO! La ruta no existe: {p}")
+    else:
+        print(f"✅ Ruta añadida: {p}")
+
+# 4. Intentar la importación
+try:
+    import landmarksLib
+    print("🚀 landmarksLib importado con éxito")
+except ModuleNotFoundError as e:
+    print(f"❌ Error: {e}")
+
+ON_RASPBERRY_PI = False
+ 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
 from landmarksLib import draw_landmarks_on_image, GetLandmarksFromImages
-
-ON_RASPBERRY_PI = False
 
 if ON_RASPBERRY_PI:
     from sense_hat import SenseHat
@@ -31,7 +47,11 @@ else:
 # Instantiate the configuration
 window_title = "Hand gestures recorder"
 colors = Colors()
-config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'], num_images_per_class=50, training_percentage=70, use_landmarks = True)
+config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'], 
+                dataset_dir='HAR_mediapipe/data/new_dataset/',
+                num_images_per_class=50, 
+                training_percentage=70,
+                use_landmarks = True)
 
 # En MediaPipe, la diferencia principal entre hand_world_landmarks y hand_landmarks radica en el sistema de coordenadas que utilizan para representar los puntos clave de las manos detectadas:
 
@@ -193,7 +213,7 @@ def main():
     config.CreateDefaultDatasetFolders()
 
     # Create the detector
-    detector = ConfigMediapipeDetector('./models/hand_landmarker.task')
+    detector = ConfigMediapipeDetector('HAR_mediapipe/models/hand_landmarker.task')
 
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
@@ -201,7 +221,7 @@ def main():
         sense_hat = SenseHat()
         sense_hat.set_rotation(180)
     else:
-        cam = CVCamera(recording_res=cam_config.resolution, index_cam=1)
+        cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # Use the first camera
         sense_hat = None
 
     # Start camera
