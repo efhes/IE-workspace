@@ -21,7 +21,7 @@ from config import Config
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
 
-ON_RASPBERRY_PI = True
+ON_RASPBERRY_PI = False
 ON_SENSE_HAT = False
 
 if ON_RASPBERRY_PI:
@@ -32,9 +32,9 @@ else:
 # Instantiate the configuration
 window_title = "Face expressions recorder"
 colors = Colors()
-config = Config(classes=['happy', 'sad', 'angry', 'surprise'],
+config = Config(classes=['angry', 'happy', 'sad', 'surprise'],
                 dataset_dir='./data/my_faces_dataset/', 
-                num_images_per_class=30, 
+                num_images_per_class=60, 
                 training_percentage=70, 
                 use_landmarks = True) # Set to True if you want to use Mediapipe for landmark detection
 

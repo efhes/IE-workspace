@@ -446,7 +446,7 @@ history = model.fit(x_train,
 
 end_time = time.time()
 execution_time = end_time - start_time
-print(f"\Training finished, execution time: {execution_time:.2f} s")
+print(f"\nTraining finished, execution time: {execution_time:.2f} s")
 
 
 # prompt: plot learning curves

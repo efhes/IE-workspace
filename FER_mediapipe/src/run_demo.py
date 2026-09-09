@@ -1,4 +1,5 @@
 print("Loading dependencies... (It might take a while the first time)")
+from pathlib import Path
 import keras
 import cv2
 import os
@@ -9,11 +10,29 @@ import mediapipe as mp
 from PIL import Image, ImageDraw, ImageFont
 import matplotlib.pyplot as plt
 
-# We add the common folder to the path
-# This folder contains the libraries that are shared between the different demos
-# This way we can import them without duplicating code
-lib_path = os.path.abspath("../common/")
-sys.path.append(lib_path)
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+
+root_path = os.getcwd()
+path_har = os.path.join(root_path, "FER_mediapipe", "src")
+path_common = os.path.join(root_path, "common")
+
+# 3. Añadirlas al path y verificar si existen
+for p in [path_har, path_common]:
+    if p not in sys.path:
+        sys.path.append(p)
+    if not os.path.exists(p):
+        print(f"⚠️ ¡OJO! La ruta no existe: {p}")
+    else:
+        print(f"✅ Ruta añadida: {p}")
+
+# 4. Intentar la importación
+try:
+    import landmarks_utils
+    print("🚀 landmarks_utils importado con éxito")
+except ModuleNotFoundError as e:
+    print(f"❌ Error: {e}")
+
+ON_RASPBERRY_PI = False
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
@@ -21,12 +40,13 @@ from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
 
 from landmarks_utils import (
-    face_get_XYZ,
+    GetFaceLandmarksListFromDetectionResult,
+    draw_landmarks_on_image,
+    FlattenFaceLandmarks,
+    ArrangeInputDataForNetwork,
     normalize_L0,
-    normalize_size,
+    normalize_size
 )
-
-ON_RASPBERRY_PI = True
 
 if ON_RASPBERRY_PI:
     from sense_hat import SenseHat
@@ -37,30 +57,25 @@ else:
     cam_config = CameraConfig(FPS=30, resolution='highres')
 
 # Instantiate the configuration
-window_title = "Face expressions recorder"
+classes=['angry', 'happy', 'sad', 'surprise']
+window_title = "Face expressions recognition demonstrator"
 colors = Colors()
-config = Config(classes=['happy', 'sad', 'angry', 'surprise'],
-                use_landmarks = True) # Set to True if you want to use Mediapipe for landmark detection
-
-# COLORS
-GREEN = (0, 255, 0)
-BLUE = (255, 0, 0)
-RED = (0, 0, 255)
+colors.SelectRandomColorFromListForClasses(classes)
+config = Config(classes=classes, use_landmarks = True)
 
 # FRAME RATE
-FPS = 30
+FPS = 15
 
-MODEL_PATH = "models/FER_finetuned.keras"
+MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size.keras"
 
 # Remember they must keep the same order than the used in training.
 # The image is used when using the sense hat. It must be a mask image of 8x8 px.
 classes = [
-    {"label": "Angry", "image": "hmmm.png"},
-    {"label": "Happy", "image": "smiley.png"},
-    {"label": "Sad", "image": "sad.png"},
-    {"label": "Surprise", "image": "surprise.png"},
+    {"label": "angry", "image": "hmmm.png"},
+    {"label": "happy", "image": "smiley.png"},
+    {"label": "sad", "image": "sad.png"},
+    {"label": "surprise", "image": "surprise.png"},
 ]
-
 
 def get_face_corners(landmarks, image_size):
     maxs = np.squeeze(np.max(landmarks, axis=0))
@@ -125,19 +140,22 @@ def draw_results(image, results, classes, face_corners=None, sense_hat=None):
 def main():
     # Load model to use
     print("Loading model...")
+    if not MODEL_PATH.is_file():
+        raise FileNotFoundError(f"No se encontró el modelo: {MODEL_PATH}")
+
     model = keras.models.load_model(MODEL_PATH)
     print("Model loaded!")
 
     # Create the detector
-    mp_detector = ConfigMediapipeDetector('./models/face_landmarker.task')
+    detector = ConfigMediapipeDetector('FER_mediapipe/models/face_landmarker.task')
 
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
-        cam = PICamera(recording_res=HIGHRES_SIZE)
+        cam = PICamera(recording_res=cam_config.resolution)
         sense_hat = SenseHat()
         sense_hat.set_rotation(180)
     else:
-        cam = CVCamera(recording_res=HIGHRES_SIZE, index_cam=1)
+        cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
 
     cam.start()
@@ -147,48 +165,115 @@ def main():
     predictions = np.zeros((1, len(classes)))
 
     while True:
+        # Load the input image.
         image_rgb = cam.read_frame()
+        
         if image_rgb is None:
             # Depending the setup, the camera might need approval to activate, so wait until we start receiving images.
             print("Waiting for camera input")
             continue
 
+        # Get current time to control the processing rate of the model
         now = time.time()
-        results = mp_detector.process(image_rgb)
-        _, landmarks = face_get_XYZ(results=results, image_rgb=None)
-        corner_ul, corner_br = get_face_corners(landmarks, HIGHRES_SIZE)
+        
+        # Process the image and get hand landmarks
+        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
+        detection_result = detector.detect(mp_image)
+        
+        landmark_values = []
+        
+        # Test if we have successfully detected a face in the image. Keep compatibility
+        # with both current and legacy MediaPipe APIs.
+        face_landmarks_list = getattr(detection_result, "face_landmarks", None)
+        if face_landmarks_list is None and hasattr(detection_result, "multi_face_landmarks"):
+            face_landmarks_list = detection_result.multi_face_landmarks
 
-        # Process the image to the model every 0.25s
-        if now - last > 0.25 and landmarks.sum() != 0:
-            landmarks = landmarks.astype(np.float32)
+        if detection_result is None or face_landmarks_list is None or len(face_landmarks_list) == 0:
+            # If no face is detected, we can skip the rest of the loop and continue to the next frame.
+            cv2.imshow("Emotions classifier", image_rgb)
+            key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
+            if key == ord("q"):
+                if ON_RASPBERRY_PI:
+                    sense_hat.clear()
+                break
+            
+            pred = 'None'
+            predictions = np.zeros((1, len(classes)))
+            conf = 1.0
+        else:
+            landmark_values = GetFaceLandmarksListFromDetectionResult(detection_result)
+        
+            # If landmark_values is empty we iterate and ignore current sample
+            if not landmark_values:
+                cv2.imshow("Emotions classifier", image_rgb)
+                key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
+                if key == ord("q"):
+                    if ON_RASPBERRY_PI:
+                        sense_hat.clear()
+                    break
+                continue
+            else:
+                # If we have successfully detected a face, we can proceed with the rest of the loop.
+                # Process the image to the model every 0.25s
+                if now - last > 0.25:
+                    flat_landmark_values = FlattenFaceLandmarks(landmark_values)
+                    #landmarks = landmarks.astype(np.float32)
 
-            # Apply normalizations
-            landmarks = normalize_L0(landmarks)
-            landmarks = normalize_size(landmarks)
+                    # Apply normalizations
+                    landmarks = normalize_L0(flat_landmark_values)
+                    landmarks = normalize_size(landmarks)
 
-            # Add axis for batch (axis 0) and channels (axis 3)
-            landmarks = np.expand_dims(landmarks, (0, 3))
+                    # landmarks original: (956,)
+                    landmarks = np.expand_dims(landmarks, axis=0)  # (1, 956)
+                    landmarks = ArrangeInputDataForNetwork(landmarks)  # (1, 478, 2, 1)
+                    
+                    # Obtener predicción
+                    predictions = model.predict(landmarks, verbose=0)
+                    
+                    # We process prediction results to display them on the screen and on the sense hat if we are using a Raspberry PI
+                    if predictions is not None:
+                        # We identify the class with the highest probability and its corresponding label
+                        prediction_idx = np.argmax(predictions)
+                        probability = predictions[0, prediction_idx] * 100
+                        pred = config.classes[prediction_idx]
+                        print(f"Predicted emotion: {pred} ({probability:.2f}%)")
+                        # We also print the prediction on the image and on the sense hat if we are using a Raspberry PI
+                        
+                    else:
+                        print("No predictions available.")
 
-            # Obtain model's prediction
-            predictions = model(landmarks)
+                    last = time.time()
+                    
+        image_rgb = draw_landmarks_on_image(image_rgb, detection_result)
+        #image_rgb = draw_results(
+        #    image_rgb,
+        #    predictions,
+        #    classes,
+        #    face_corners=[tuple(corner_ul), tuple(corner_br)],
+        #    sense_hat=sense_hat,
+        #)
+        if sense_hat is not None:
+            sense_hat.load_image(
+                os.path.join("emoticons", classes[prediction_idx]["image"])
+            )
+        if pred == 'None':
+            color1 = colors.color['black']
+        else:
+            color1 = colors.GetColorForClass(pred)
+            
+        class_msgs = WindowMessage(
+            txt1 = "Predicted class: " + pred + " (%0.2f)" % conf, pos1 = (10, cam_config.resolution[1]-20), col1 = color1,
+            txt2 = "", pos2 = (0, 0), col2 = colors.color['black'],
+            txt3 = "", pos3 = (0, 0), col3 = colors.color['black'])
 
-            last = time.time()
-
-        image_rgb = draw_results(
-            image_rgb,
-            predictions,
-            classes,
-            face_corners=[tuple(corner_ul), tuple(corner_br)],
-            sense_hat=sense_hat,
-        )
-
-        cv2.imshow("Emotions classifier", image_rgb)
+        class_msgs.ShowWindowMessages(image_rgb)
+        
+        cv2.imshow(window_title, image_rgb)
         key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
         if key == ord("q"):
             if ON_RASPBERRY_PI:
                 sense_hat.clear()
             break
-
 
 if __name__ == "__main__":
     main()
