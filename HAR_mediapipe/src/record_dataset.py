@@ -78,8 +78,6 @@ config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'
 # pero si se quiere trabajar con el movimiento de las manos en un espacio 3D, es necesario utilizar hand_world_landmarks.
 
 def DisplayPreviewScreen(cam, detector, messages=None):
-    #cam.start()
-    
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.
         image = cam.read_frame()
         
@@ -112,7 +110,6 @@ def DisplayPreviewScreen(cam, detector, messages=None):
         key = cv2.waitKey(int(1 / cam_config.FPS * 1000)) & 0xFF
         
         if key == ord("s"):
-            #cam.stop()
             break
         elif key ==  ord('q'):
             exit()
@@ -161,15 +158,16 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
        
         if config.use_landmarks:
             # Convert the image to RGB for Mediapipe
-            #image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            image_rgb = image  # Assuming the image is already in RGB format
+            if ON_RASPBERRY_PI:
+                image_rgb = image  # Assuming the image is already in RGB format
+            else:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
             # Process the image and get hand landmarks
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
             detection_result = detector.detect(mp_image)
 
             if detection_result.hand_landmarks:
-                #image_rgb, landmark_values = get_XYZ(results, image_rgb)
                 image, landmark_values = draw_landmarks_on_image(image, detection_result)
         
         messages.msg[1]['text'] = "Stored images: " + str(n_recorded + 1) + "/" + str(num_images_to_record)
@@ -178,7 +176,6 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
         cv2.imshow(window_title, image)
 
         if n_recorded>=num_images_to_record:
-            #cam.stop()
             time.sleep(1)
             break
 
@@ -225,11 +222,13 @@ def main():
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
         cam = PICamera(recording_res=cam_config.resolution)
-        sense_hat = SenseHat()
-        sense_hat.set_rotation(180)
+        if ON_SENSE_HAT:
+            sense_hat = SenseHat()
+            sense_hat.set_rotation(180)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # Use the first camera
-        sense_hat = None
+        if ON_SENSE_HAT:
+            sense_hat = None
 
     # Start camera
     cam.start()
