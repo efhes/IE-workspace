@@ -1,3 +1,4 @@
+from pathlib import Path
 import cv2
 import time
 import numpy as np
@@ -6,26 +7,43 @@ import keras
 import sys
 import os
 
-# We add the common folder to the path
-# This folder contains the libraries that are shared between the different demos
-# This way we can import them without duplicating code
-lib_path = os.path.abspath("../common/")
+PROJECT_DIR = Path(__file__).resolve().parent.parent
 
-sys.path.append(lib_path)
+root_path = os.getcwd()
+path_har = os.path.join(root_path, "FER_mediapipe", "src")
+path_common = os.path.join(root_path, "common")
+
+# 3. Añadirlas al path y verificar si existen
+for p in [path_har, path_common]:
+    if p not in sys.path:
+        sys.path.append(p)
+    if not os.path.exists(p):
+        print(f"⚠️ ¡OJO! La ruta no existe: {p}")
+    else:
+        print(f"✅ Ruta añadida: {p}")
+
+# 4. Intentar la importación
+try:
+    import landmarks_utils
+    print("🚀 landmarks_utils importado con éxito")
+except ModuleNotFoundError as e:
+    print(f"❌ Error: {e}")
+
+ON_RASPBERRY_PI = False
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config, ConfigMediapipeDetector
 from gui import Colors, WindowMessage
 from landmarksLib import draw_landmarks_on_image
 
-ON_RASPBERRY_PI = False
 #MODEL_PATH = "models/Five_Four_Three_CNN1.keras"
-MODEL_PATH = "models/PIDS_CNN1.keras"
+MODEL_PATH = PROJECT_DIR / "models" / "pids_new_model_CNN1.keras"
 
 # Instantiate the configuration
 # Classes to be recognized; ATENTION: 'None' class must be the last one; the others must be specified in the order they were trained (alphabetical order)
 #classes=['Five', 'Four', 'Three', 'None']
-classes=['backward', 'forward', 'left', 'right', 'shoot', 'stop', 'None']
+#classes=['backward', 'forward', 'left', 'right', 'shoot', 'stop', 'None']
+classes=['backward', 'forward', 'left', 'right', 'shoot', 'stop']
 window_title = "Hand gestures recognition demonstrator"
 colors = Colors()
 colors.SelectRandomColorFromListForClasses(classes)
@@ -39,7 +57,7 @@ landmark_values = [[0, 0] for _ in range(21)]
 
 def main():
     # Create the detector
-    detector = ConfigMediapipeDetector('./models/hand_landmarker.task')
+    detector = ConfigMediapipeDetector('HAR_mediapipe/models/hand_landmarker.task')
 
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
@@ -47,7 +65,7 @@ def main():
         sense_hat = SenseHat()
         sense_hat.set_rotation(180)
     else:
-        cam = CVCamera(recording_res=cam_config.resolution, index_cam=1)
+        cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
     
     
@@ -66,6 +84,7 @@ def main():
 
     while True:
         image = cam.read_frame()
+        
         if image is None:
             # Depending the setup, the camera might need approval to activate, so wait until we start receiving images.
             print("Waiting for camera input")
@@ -78,10 +97,12 @@ def main():
             if num_frames % 25 == 0:
                 print('num_frames = %d' % num_frames)
         
-        
         # Convert the image to RGB for Mediapipe
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)    
-
+        if ON_RASPBERRY_PI:
+            image_rgb = image  # Assuming the image is already in RGB format
+        else:
+            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
         # Process the image and get hand landmarks
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
         detection_result = detector.detect(mp_image)
@@ -112,8 +133,13 @@ def main():
             predictions = np.zeros((1, len(classes)))
             conf = 1.0
         
+        if pred == 'None':
+            color1 = colors.color['black']
+        else:
+            color1 = colors.GetColorForClass(pred)
+            
         class_msgs = WindowMessage(
-            txt1 = "Predicted class: " + pred + " (%0.2f)" % conf, pos1 = (10, cam_config.resolution[1]-20), col1 = colors.GetColorForClass(pred),
+            txt1 = "Predicted class: " + pred + " (%0.2f)" % conf, pos1 = (10, cam_config.resolution[1]-20), col1 = color1,
             txt2 = "", pos2 = (0, 0), col2 = colors.color['black'],
             txt3 = "", pos3 = (0, 0), col3 = colors.color['black'])
 

@@ -6,13 +6,15 @@ import time
 import numpy as np
 import mediapipe as mp
 
+# Set the project directory
 PROJECT_DIR = Path(__file__).resolve().parent.parent
 
+# Set the paths for HAR_mediapipe and common directories
 root_path = os.getcwd()
 path_har = os.path.join(root_path, "HAR_mediapipe", "src")
 path_common = os.path.join(root_path, "common")
 
-# 3. Añadirlas al path y verificar si existen
+# Añadirlas al path y verificar si existen
 for p in [path_har, path_common]:
     if p not in sys.path:
         sys.path.append(p)
@@ -21,7 +23,7 @@ for p in [path_har, path_common]:
     else:
         print(f"✅ Ruta añadida: {p}")
 
-# 4. Intentar la importación
+# Intentar la importación
 try:
     import landmarksLib
     print("🚀 landmarksLib importado con éxito")
@@ -29,28 +31,29 @@ except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
 ON_RASPBERRY_PI = False
+ON_SENSE_HAT = False
  
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
-from landmarksLib import draw_landmarks_on_image, GetLandmarksFromImages
+from landmarksLib import draw_landmarks_on_image
 
 if ON_RASPBERRY_PI:
-    from sense_hat import SenseHat
-    
-if ON_RASPBERRY_PI:
     cam_config = CameraConfig(FPS=30, resolution='large')
+    
+    if ON_SENSE_HAT:
+        from sense_hat import SenseHat
 else:
     cam_config = CameraConfig(FPS=30, resolution='highres')
 
 # Instantiate the configuration
 window_title = "Hand gestures recorder"
 colors = Colors()
-config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'], 
-                dataset_dir='HAR_mediapipe/data/new_dataset/',
-                num_images_per_class=50, 
-                training_percentage=70,
+config = Config(classes=['shoot', 'stop', 'forward', 'backward', 'left', 'right'], # Classes to be recognized; ATENTION: if 'None' class is included, it must be the last one; the others must be specified in the order they were trained (alphabetical order)
+                dataset_dir='HAR_mediapipe/data/new_dataset/', # Path to the dataset directory
+                num_images_per_class=50, # Number of images to record per class
+                training_percentage=70, # Percentage of images to be used for training (the rest will be used for testing)
                 use_landmarks = True)
 
 # En MediaPipe, la diferencia principal entre hand_world_landmarks y hand_landmarks radica en el sistema de coordenadas que utilizan para representar los puntos clave de las manos detectadas:
@@ -78,8 +81,8 @@ def DisplayPreviewScreen(cam, detector, messages=None):
     #cam.start()
     
     while True: #Empieza a mostrar la imagen por pantalla pra que le usuario se prepare. Cuando se presiona la tecla s el sistema compienza a grabar.
-        #image = cam.capture_array("main")
         image = cam.read_frame()
+        
         if image is None:
             # Depending the setup, the camera might need approval to activate, so wait until we start receiving images.
             print("Waiting for camera input")
@@ -87,8 +90,11 @@ def DisplayPreviewScreen(cam, detector, messages=None):
 
         if config.use_landmarks:
             # Convert the image to RGB for Mediapipe
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)    
-
+            if ON_RASPBERRY_PI:
+                image_rgb = image  # Assuming the image is already in RGB format
+            else:
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            
             # Process the image and get hand landmarks
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
             detection_result = detector.detect(mp_image)
@@ -155,7 +161,8 @@ def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
        
         if config.use_landmarks:
             # Convert the image to RGB for Mediapipe
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            #image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image_rgb = image  # Assuming the image is already in RGB format
 
             # Process the image and get hand landmarks
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
