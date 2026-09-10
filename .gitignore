@@ -24,8 +24,8 @@
 
 
 # Ignorar todo dentro de data
-HAR_mediapipe/data/*
-image_recognition/data/*
+#HAR_mediapipe/data/*
+#image_recognition/data/*
 
 # Pero no ignorar esta carpeta
 #!HAR_mediapipe/data/new_dataset/
