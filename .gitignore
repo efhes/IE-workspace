@@ -5,7 +5,7 @@
 # We do not keep track of wheels files
 *.whl
 # We do not keep track of images
-#*.jpg
+*.jpg
 *.h264
 # We do not keep track of models
 #*.h5
@@ -22,12 +22,13 @@
 *.csv
 *.arff
 
+
 # Ignorar todo dentro de data
 HAR_mediapipe/data/*
 image_recognition/data/*
 
 # Pero no ignorar esta carpeta
-!HAR_mediapipe/data/new_dataset/
+#!HAR_mediapipe/data/new_dataset/
 
 # Ni su contenido
-!HAR_mediapipe/data/new_dataset/**
+#!HAR_mediapipe/data/new_dataset/**
