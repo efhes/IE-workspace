@@ -29,7 +29,11 @@ try:
 except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
+ON_SENSE_HAT = True
+
+if ON_SENSE_HAT:
+    from sense_hat import SenseHat
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config, ConfigMediapipeDetector
@@ -62,8 +66,9 @@ def main():
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
         cam = PICamera(recording_res=cam_config.resolution)
-        sense_hat = SenseHat()
-        sense_hat.set_rotation(180)
+        if ON_SENSE_HAT:    
+            sense_hat = SenseHat()
+            sense_hat.set_rotation(180)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
