@@ -36,7 +36,6 @@ from config import Config, ConfigMediapipeDetector
 from gui import Colors, WindowMessage
 from landmarksLib import draw_landmarks_on_image
 
-#MODEL_PATH = "models/Five_Four_Three_CNN1.keras"
 MODEL_PATH = PROJECT_DIR / "models" / "pids_new_model_CNN1.keras"
 
 # Instantiate the configuration
