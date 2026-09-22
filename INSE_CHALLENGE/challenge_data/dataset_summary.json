@@ -1,0 +1,85 @@
+{
+  "total_windows": 28800,
+  "train_windows": 17280,
+  "test_windows": 11520,
+  "window_size": 200,
+  "sampling_rate_hz": 50,
+  "duration_seconds": 4.0,
+  "n_channels": 12,
+  "channel_names": [
+    "chest_x",
+    "chest_y",
+    "chest_z",
+    "waist_x",
+    "waist_y",
+    "waist_z",
+    "wrist_L_x",
+    "wrist_L_y",
+    "wrist_L_z",
+    "wrist_R_x",
+    "wrist_R_y",
+    "wrist_R_z"
+  ],
+  "sensors": [
+    "chest",
+    "waist",
+    "wrist_L",
+    "wrist_R"
+  ],
+  "activity_classes": [
+    "BackhandRH",
+    "BackhandTwoH",
+    "Drive",
+    "Lob",
+    "Serve",
+    "Waiting"
+  ],
+  "train_class_distribution": {
+    "Drive": 2880,
+    "Serve": 2880,
+    "BackhandRH": 2880,
+    "BackhandTwoH": 2880,
+    "Lob": 2880,
+    "Waiting": 2880
+  },
+  "test_class_distribution": {
+    "Drive": 1920,
+    "Serve": 1920,
+    "BackhandRH": 1920,
+    "BackhandTwoH": 1920,
+    "Lob": 1920,
+    "Waiting": 1920
+  },
+  "train_subject_distribution": {
+    "P1": 1440,
+    "P2": 1440,
+    "P3": 1440,
+    "P4": 1440,
+    "P5": 1440,
+    "P6": 1440,
+    "P7": 1440,
+    "P8": 1440,
+    "P9": 1440,
+    "P10": 1440,
+    "P11": 1440,
+    "P12": 1440
+  },
+  "test_subject_distribution": {
+    "P13": 1440,
+    "P14": 1440,
+    "P15": 1440,
+    "P16": 1440,
+    "P17": 1440,
+    "P18": 1440,
+    "P19": 1440,
+    "P20": 1440
+  },
+  "device_distribution_train": {
+    "Commercial": 8640,
+    "Custom": 8640
+  },
+  "device_distribution_test": {
+    "Commercial": 5760,
+    "Custom": 5760
+  }
+}
