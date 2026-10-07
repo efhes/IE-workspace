@@ -32,7 +32,8 @@ try:
 except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
+ON_SENSE_HAT = False
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
@@ -49,7 +50,8 @@ from landmarks_utils import (
 )
 
 if ON_RASPBERRY_PI:
-    from sense_hat import SenseHat
+    if ON_SENSE_HAT:
+        from sense_hat import SenseHat
 
 if ON_RASPBERRY_PI:
     cam_config = CameraConfig(FPS=30, resolution='large')
@@ -66,7 +68,8 @@ config = Config(classes=classes, use_landmarks = True)
 # FRAME RATE
 FPS = 15
 
-MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size.keras"
+#MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size.keras"
+MODEL_PATH = PROJECT_DIR / "models" / "FER_finetuned.keras"
 
 # Remember they must keep the same order than the used in training.
 # The image is used when using the sense hat. It must be a mask image of 8x8 px.
@@ -128,10 +131,11 @@ def draw_results(image, results, classes, face_corners=None, sense_hat=None):
     if face_corners is not None:
         draw.rectangle(face_corners, outline=(0, 0, 255, 255))
 
-    if sense_hat is not None:
-        sense_hat.load_image(
-            os.path.join("emoticons", classes[prediction_idx]["image"])
-        )
+    if ON_SENSE_HAT:
+        if sense_hat is not None:
+            sense_hat.load_image(
+                os.path.join("emoticons", classes[prediction_idx]["image"])
+            )
 
     image_rgb = np.array(image_pil)
     return image_rgb
@@ -152,8 +156,9 @@ def main():
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
         cam = PICamera(recording_res=cam_config.resolution)
-        sense_hat = SenseHat()
-        sense_hat.set_rotation(180)
+        if ON_SENSE_HAT:
+            sense_hat = SenseHat()
+            sense_hat.set_rotation(180)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
@@ -198,12 +203,13 @@ def main():
             key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
             if key == ord("q"):
                 if ON_RASPBERRY_PI:
-                    sense_hat.clear()
+                    if ON_SENSE_HAT:
+                        sense_hat.clear()
                 break
             
             pred = 'None'
+            probability = 0.0
             predictions = np.zeros((1, len(classes)))
-            conf = 1.0
         else:
             landmark_values = GetFaceLandmarksListFromDetectionResult(detection_result)
         
@@ -213,7 +219,8 @@ def main():
                 key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
                 if key == ord("q"):
                     if ON_RASPBERRY_PI:
-                        sense_hat.clear()
+                        if ON_SENSE_HAT:
+                            sense_hat.clear()
                     break
                 continue
             else:
@@ -256,17 +263,20 @@ def main():
         #    face_corners=[tuple(corner_ul), tuple(corner_br)],
         #    sense_hat=sense_hat,
         #)
-        if sense_hat is not None:
-            sense_hat.load_image(
-                os.path.join("emoticons", classes[prediction_idx]["image"])
-            )
+        if ON_RASPBERRY_PI:
+            if ON_SENSE_HAT:
+                if sense_hat is not None:
+                    sense_hat.load_image(
+                        os.path.join("emoticons", classes[prediction_idx]["image"])
+                    )
+                
         if pred == 'None':
             color1 = colors.color['black']
         else:
             color1 = colors.GetColorForClass(pred)
             
         class_msgs = WindowMessage(
-            txt1 = "Predicted class: " + pred + " (%0.2f)" % conf, pos1 = (10, cam_config.resolution[1]-20), col1 = color1,
+            txt1 = "Predicted class: " + pred + " (%0.2f)" % probability, pos1 = (10, cam_config.resolution[1]-20), col1 = color1,
             txt2 = "", pos2 = (0, 0), col2 = colors.color['black'],
             txt3 = "", pos3 = (0, 0), col3 = colors.color['black'])
 
@@ -276,7 +286,8 @@ def main():
         key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
         if key == ord("q"):
             if ON_RASPBERRY_PI:
-                sense_hat.clear()
+                if ON_SENSE_HAT:
+                    sense_hat.clear()
             break
 
 if __name__ == "__main__":
