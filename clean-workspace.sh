@@ -31,7 +31,7 @@ pip install --upgrade mediapipe keras
 step "Copiando proyectos a ~/workspace"
 mkdir -p ~/workspace
 cd ~/IE-workspace
-for p in FER_mediapipe HAR_mediapipe HAR_inercial image_recognition; do
+for p in common FER_mediapipe HAR_mediapipe HAR_inercial image_recognition; do
   log "   copiando $p"
   cp -R "$p" ~/workspace/
 done

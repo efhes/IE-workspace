@@ -1,12 +1,7 @@
+print("Loading dependencies... (It might take a while the first time)")
+from pathlib import Path
 import sys
 import os
-
-# We add the common folder to the path
-# This folder contains the libraries that are shared between the different demos
-# This way we can import them without duplicating code
-lib_path = os.path.abspath("../common/")
-sys.path.append(lib_path)
-
 import cv2
 import time
 import numpy as np
@@ -16,25 +11,50 @@ import tty
 import termios
 import matplotlib.pyplot as plt
 
+PROJECT_DIR = Path(__file__).resolve().parent.parent
+
+root_path = os.getcwd()
+path_har = os.path.join(root_path, "FER_mediapipe", "src")
+path_common = os.path.join(root_path, "common")
+
+# 3. Añadirlas al path y verificar si existen
+for p in [path_har, path_common]:
+    if p not in sys.path:
+        sys.path.append(p)
+    if not os.path.exists(p):
+        print(f"⚠️ ¡OJO! La ruta no existe: {p}")
+    else:
+        print(f"✅ Ruta añadida: {p}")
+
+# 4. Intentar la importación
+try:
+    import landmarks_utils
+    print("🚀 landmarks_utils importado con éxito")
+except ModuleNotFoundError as e:
+    print(f"❌ Error: {e}")
+
+ON_RASPBERRY_PI = True
+ON_SENSE_HAT = False
+
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
 from config import ConfigMediapipeDetector, RecordingSetup
 from gui import Colors, WindowMessage
-
-ON_RASPBERRY_PI = False
-ON_SENSE_HAT = False
 
 if ON_RASPBERRY_PI:
     cam_config = CameraConfig(FPS=30, resolution='large')
 else:
     cam_config = CameraConfig(FPS=30, resolution='highres')
 
+if ON_RASPBERRY_PI:
+    from sense_hat import SenseHat
+
 # Instantiate the configuration
 window_title = "Face expressions recorder"
 colors = Colors()
 config = Config(classes=['angry', 'happy', 'sad', 'surprise'],
-                dataset_dir='./data/my_faces_dataset/', 
-                num_images_per_class=60, 
+                dataset_dir='./FER_mediapipe/data/my_faces_dataset/', 
+                num_images_per_class=5, 
                 training_percentage=70, 
                 use_landmarks = True) # Set to True if you want to use Mediapipe for landmark detection
 
@@ -206,7 +226,7 @@ def main():
     config.CreateDefaultDatasetFolders()
     
     # Create the detector
-    detector = ConfigMediapipeDetector('./models/face_landmarker.task')
+    detector = ConfigMediapipeDetector('./FER_mediapipe/models/face_landmarker.task')
     
     # Start camera, use CVCamera if working on a laptop and PICamera in case you are working on a Raspberry PI
     if ON_RASPBERRY_PI:
