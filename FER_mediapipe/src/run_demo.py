@@ -33,7 +33,7 @@ except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
 ON_RASPBERRY_PI = True
-ON_SENSE_HAT = False
+ON_SENSE_HAT = True
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
@@ -168,7 +168,8 @@ def main():
     now = 0
     last = 0
     predictions = np.zeros((1, len(classes)))
-
+    prediction_idx = 0
+    
     while True:
         # Load the input image.
         image_rgb = cam.read_frame()
@@ -267,7 +268,7 @@ def main():
             if ON_SENSE_HAT:
                 if sense_hat is not None:
                     sense_hat.load_image(
-                        os.path.join("emoticons", classes[prediction_idx]["image"])
+                        os.path.join("./FER_mediapipe/emoticons", classes[prediction_idx]["image"])
                     )
                 
         if pred == 'None':
