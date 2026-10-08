@@ -13,7 +13,7 @@ trap 'log "ERROR en el paso $STEP (línea $LINENO). Abortando."' ERR
 log "=== INICIO del mantenimiento ==="
 
 step "Vaciando Desktop, Documents y Downloads"
-rm -rf ~/Desktop/* ~/Documents/* ~/Downloads/*
+sudo rm -rf /home/pi/Desktop/* /home/pi/Documents/* /home/pi/Downloads/*
 
 step "Eliminando IE-workspace anterior"
 rm -rf ~/IE-workspace
