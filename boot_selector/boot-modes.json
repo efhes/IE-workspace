@@ -10,9 +10,9 @@
     {
       "name": "Image Recognition (GUI)",
       "type": "gui",
-      "workdir": "~/workspace/image_recognition/src",
+      "workdir": "~/workspace/image_recognition/",
       "venv": "~/venvml",
-      "command": "python demo-gui.py"
+      "command": "python src/demo-gui.py"
     },
     {
       "name": "Image Recognition (CLI)",

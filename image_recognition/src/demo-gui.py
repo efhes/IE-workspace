@@ -23,7 +23,7 @@ from PIL import Image
 import json
 from imutils.video import FPS
 
-ON_RASPBERRY_PI = False
+ON_RASPBERRY_PI = True
 
 if ON_RASPBERRY_PI:
     from sense_hat import SenseHat
