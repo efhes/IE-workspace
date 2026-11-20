@@ -1,0 +1,4 @@
+!boot-modes.json
+__pycache__/
+*.pyc
+run-current-mode.sh

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openbox_config xmlns="http://openbox.org/3.4/rc">
+  <core>
+    <xwaylandPersistence>yes</xwaylandPersistence>
+  </core>
+
+  <theme>
+    <name>PiXflat</name>
+    <cornerRadius>0</cornerRadius>
+    <keepBorder>yes</keepBorder>
+    <titlebar>
+      <layout>:iconify,max,close</layout>
+    </titlebar>
+  </theme>
+
+  <keyboard>
+    <numlock>off</numlock>
+    <default />
+    <keybind key="C-A-t">
+      <action name="Execute">
+        <command>lxterminal</command>
+      </action>
+    </keybind>
+  </keyboard>
+
+  <mouse>
+    <default />
+  </mouse>
+</openbox_config>

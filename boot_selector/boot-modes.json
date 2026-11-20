@@ -1,0 +1,46 @@
+{
+  "timeout_seconds": 10,
+  "sensehat": {
+    "enabled": true,
+    "rotation": 180,
+    "low_light": true,
+    "hold_to_stop_seconds": 3
+  },
+  "modes": [
+    {
+      "name": "Image Recognition (GUI)",
+      "type": "gui",
+      "workdir": "~/workspace/image_recognition/src",
+      "venv": "~/venvml",
+      "command": "python demo-gui.py"
+    },
+    {
+      "name": "Image Recognition (CLI)",
+      "type": "cli",
+      "workdir": "~/workspace/image_recognition/src",
+      "venv": "~/venvml",
+      "command": "python demo.py"
+    },
+    {
+      "name": "HAR Inertial LSTM (CLI)",
+      "type": "cli",
+      "workdir": "~/workspace/HAR_inercial/src",
+      "venv": "~/venvml",
+      "command": "python demo-lstm-recognizer.py"
+    },
+    {
+      "name": "FER MediaPipe (GUI)",
+      "type": "gui",
+      "workdir": "~/workspace/FER_mediapipe/src",
+      "venv": "~/venvml",
+      "command": "python run_demo.py"
+    },
+    {
+      "name": "HAR MediaPipe (GUI)",
+      "type": "gui",
+      "workdir": "~/workspace/HAR_mediapipe/src",
+      "venv": "~/venvml",
+      "command": "python demo-sign-alphabet.py"
+    }
+  ]
+}
