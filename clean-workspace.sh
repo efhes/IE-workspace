@@ -36,4 +36,15 @@ for p in common FER_mediapipe HAR_mediapipe HAR_inercial image_recognition; do
   cp -R "$p" ~/workspace/
 done
 
+cd ~/IE-workspace/boot_selector
+./install.sh
+# Wait and show 10 seconds countdown before reboot
+
+for i in {10..1}; do
+    log "Reboot in $i seconds..."
+    sleep 1
+done
+
 log "=== COMPLETADO correctamente ==="
+
+sudo reboot
