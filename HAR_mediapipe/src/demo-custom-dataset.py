@@ -29,8 +29,8 @@ try:
 except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
-ON_RASPBERRY_PI = False
-ON_SENSE_HAT = False
+ON_RASPBERRY_PI = True
+ON_SENSE_HAT = True
 
 if ON_SENSE_HAT:
     from sense_hat import SenseHat

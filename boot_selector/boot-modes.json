@@ -31,16 +31,17 @@
     {
       "name": "FER MediaPipe (GUI)",
       "type": "gui",
-      "workdir": "~/workspace/FER_mediapipe/src",
+      "workdir": "~/workspace/",
       "venv": "~/venvml",
-      "command": "python run_demo.py"
+      "command": "python FER_mediapipe/src/run_demo.py"
     },
     {
       "name": "HAR MediaPipe (GUI)",
       "type": "gui",
-      "workdir": "~/workspace/HAR_mediapipe/src",
+      "workdir": "~/workspace/",
       "venv": "~/venvml",
-      "command": "python demo-sign-alphabet.py"
+      //"command": "python HAR_mediapipe/src/demo-custom-dataset.py"
+      "command": "python HAR_mediapipe/src/demo-sign-alphabet.py"
     }
   ]
 }
