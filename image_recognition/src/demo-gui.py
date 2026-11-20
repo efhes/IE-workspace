@@ -50,7 +50,7 @@ def main():
         sense_hat = None
 
     # Load the labels
-    with open('../models/imagenet-simple-labels/imagenet-simple-labels.json') as f:
+    with open('../models/imagenet_simple_labels/imagenet-simple-labels.json') as f:
         labels = json.load(f)
 
     colors = Colors()

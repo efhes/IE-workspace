@@ -10,7 +10,6 @@
 # We do not keep track of models
 #*.h5
 #*.pth
-#*.json
 # We do not keep track of zip files
 *.zip
 # We do not keep track of log, txt, lis, bat, out, csv or arff files
@@ -22,10 +21,6 @@
 *.csv
 *.arff
 
-
-# Ignorar todo dentro de data
-#HAR_mediapipe/data/*
-#image_recognition/data/*
 
 # Pero no ignorar esta carpeta
 #!HAR_mediapipe/data/new_dataset/
