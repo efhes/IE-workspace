@@ -40,8 +40,7 @@
       "type": "gui",
       "workdir": "~/workspace/",
       "venv": "~/venvml",
-      //"command": "python HAR_mediapipe/src/demo-custom-dataset.py"
-      "command": "python HAR_mediapipe/src/demo-sign-alphabet.py"
+      "command": "python HAR_mediapipe/src/demo-custom-dataset.py"
     }
   ]
 }
