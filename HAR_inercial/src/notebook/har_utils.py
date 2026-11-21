@@ -20,6 +20,10 @@ def DownloadDS(filename, csv_with_user_info=False):
     col_names = col_names + ['class']
 
   df_csv.columns = col_names
+  if df_csv.isna().any().any():
+    nan_rows = int(df_csv.isna().any(axis=1).sum())
+    print(f'[DownloadDS][WARNING] Dropping {nan_rows} incomplete row(s) containing NaN values...')
+    df_csv = df_csv.dropna().reset_index(drop=True)
   return df_csv
 
 # Load CSV data
