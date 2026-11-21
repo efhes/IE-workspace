@@ -1,5 +1,10 @@
 #!/usr/bin/python
-from tensorflow.keras.models import model_from_json
+import os
+import sys
+import tty
+import termios
+import keras
+from keras.models import model_from_json, load_model
 import threading
 import traceback
 import numpy as np
@@ -104,7 +109,7 @@ def wait_for_keypress(target_key, exit_key, yes_to_all_key):
                 sys.exit(0)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return yes_to_all_result
+    return yes_to_all_result
 
 def Recognize_lstm(model, tensor):
     
@@ -139,9 +144,9 @@ def Recognize_lstm(model, tensor):
             num_colours = len(colour_array)
             p_colour = num_pred
             
-            if p_colour > num_colours:
-                p_colour = num_colours
-            sense.show_message(inst.class_attribute.value(num_pred), text_colour=colour_array[p_colour], scroll_speed=0.05)
+            if p_colour >= num_colours:
+                p_colour = num_colours - 1
+            sense.show_message(pred, text_colour=colour_array[p_colour], scroll_speed=0.05)
             #sense.show_message(pred, scroll_speed=0.1)
     
 def main(model):
@@ -202,17 +207,22 @@ if __name__ == "__main__":
             print("[InitializeDisplay]")
             sense = InitializeDisplay()
         
-        # Cambiar .model por .h5/.json
+        # Cambiar .model por .weights.h5/.json (o .keras)
         model_filename = MODELS_PATH + MODEL_NAME
         print("\n[LOADING LSTM MODEL][%s]" % model_filename)
         
-        json_file = open(model_filename+'.json', 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        model = model_from_json(loaded_model_json)
-        
-        # load weights into new model
-        model.load_weights(model_filename + '.h5')
+        if os.path.exists(model_filename + '.keras'):
+            model = load_model(model_filename + '.keras')
+        else:
+            with open(model_filename + '.json', 'r') as json_file:
+                loaded_model_json = json_file.read()
+            model = model_from_json(loaded_model_json)
+            
+            # load weights into new model (Keras 3 uses .weights.h5; fallback to legacy .h5)
+            weights_filename = model_filename + '.weights.h5'
+            if not os.path.exists(weights_filename):
+                weights_filename = model_filename + '.h5'
+            model.load_weights(weights_filename)
                 
         main(model)
         
