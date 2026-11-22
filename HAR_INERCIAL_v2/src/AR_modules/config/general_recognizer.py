@@ -21,7 +21,7 @@ MODEL_NAME = "BACKHAND_DRIVE_LOB_SERVE-LSTM_from_raw"
 # Note: The notebook sorts classes alphabetically when one-hot encoding,
 # and also exports a <MODEL_NAME>.classes.txt file that demo-lstm-recognizer.py
 # reads automatically if present.
-CLASSES = "CIRCLES_SHAKE_TILT"
-# CLASSES = "BACKHAND_DRIVE_LOB_SERVE"
+#CLASSES = "CIRCLES_SHAKE_TILT"
+CLASSES = "BACKHAND_DRIVE_LOB_SERVE"
 # CLASSES = "UP_SIT_PITCH_ROLL_YAW"
 # CLASSES = "RUNNING_STEP_SQUAT_CIRCLES"
