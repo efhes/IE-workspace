@@ -1,5 +1,5 @@
 {
-  "timeout_seconds": 10,
+  "timeout_seconds": 15,
   "sensehat": {
     "enabled": true,
     "rotation": 180,
@@ -24,9 +24,9 @@
     {
       "name": "HAR Inertial LSTM (CLI)",
       "type": "cli",
-      "workdir": "~/workspace/HAR_inercial/src",
+      "workdir": "~/workspace/HAR_INERCIAL_v2/",
       "venv": "~/venvml",
-      "command": "python demo-lstm-recognizer.py"
+      "command": "python src/demo-lstm-recognizer.py"
     },
     {
       "name": "FER MediaPipe (GUI)",
