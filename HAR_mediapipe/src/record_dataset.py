@@ -217,7 +217,7 @@ def main():
         cam = PICamera(recording_res=cam_config.resolution)
         if ON_SENSE_HAT:
             sense_hat = SenseHat()
-            sense_hat.set_rotation(180)
+            sense_hat.set_rotation(0)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # Use the first camera
         if ON_SENSE_HAT:

@@ -123,7 +123,7 @@ def wait_for_keypress(target_key, exit_key, yes_to_all_key):
                 sys.exit(0)
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return yes_to_all_result
+    return yes_to_all_result
 
 def StartRecordingImages(cam, detector, num_images_to_record, messages=None):
     # num of images recorded counter
@@ -233,7 +233,7 @@ def main():
         cam = PICamera(recording_res=cam_config.resolution)
         if ON_SENSE_HAT:
             sense_hat = SenseHat()
-            sense_hat.set_rotation(180)
+            sense_hat.set_rotation(0)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         if ON_SENSE_HAT:

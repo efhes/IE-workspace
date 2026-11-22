@@ -21,6 +21,7 @@ while True:
     #print(yuv420)
     #rgb = cv2.cvtColor(yuv420, cv2.COLOR_YUV420p2RGB)
     rgb = picam2.capture_array("main")
+    rgb = cv2.rotate(rgb, cv2.ROTATE_180)
     cv2.imshow("Camera", rgb)
     cv2.waitKey(0) # waits until a key is pressed
     

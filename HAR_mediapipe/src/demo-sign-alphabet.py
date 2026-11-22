@@ -54,6 +54,7 @@ def main():
                 
     while True:
         image = picam2.capture_array()
+        image = cv2.rotate(image, cv2.ROTATE_180)
         num_frames=+1
         
         if debug_HAR:

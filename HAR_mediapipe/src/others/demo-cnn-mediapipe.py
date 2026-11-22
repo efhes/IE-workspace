@@ -155,6 +155,7 @@ pred= ""
 while True:
     
     image = picam2.capture_array("main")
+    image = cv2.rotate(image, cv2.ROTATE_180)
     
     image = cv2.flip(image,1) 
     now = time.time()

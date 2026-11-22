@@ -7,7 +7,7 @@ from config import ConfigMediapipeDetector
 
 #sys.path.append(".")
 #from src.landmarks_utils import normalize_L0, normalize_size, face_get_XYZ
-from landmarks_utils import normalize_L0, normalize_size, face_get_XYZ
+from landmarks_utils import normalize_L0, normalize_size, normalize_rotation, face_get_XYZ
 import mediapipe as mp
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
@@ -49,6 +49,8 @@ class RavdessDataloader:
             landmarks = normalize_L0(landmarks)
         if "size" in self.normalizations:
             landmarks = normalize_size(landmarks)
+        if "rotation" in self.normalizations:
+            landmarks = normalize_rotation(landmarks)
         return landmarks
 
     def generator(self):

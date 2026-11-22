@@ -56,7 +56,7 @@ def main():
     if ON_RASPBERRY_PI:
         cam = PICamera(recording_res=cam_config.resolution)
         sense_hat = SenseHat()
-        sense_hat.set_rotation(180)
+        sense_hat.set_rotation(0)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=1)
         sense_hat = None

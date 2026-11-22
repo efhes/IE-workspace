@@ -239,13 +239,18 @@ else:
 
 
 import random
-from landmarks_utils import ArrangeInputDataForNetwork, normalize_all_samples_L0, normalize_all_samples_size
+from landmarks_utils import (
+    ArrangeInputDataForNetwork,
+    normalize_all_samples_L0,
+    normalize_all_samples_size,
+    normalize_all_samples_rotation,
+)
 
 print('\n[DATA PREPARATION]')
 
 debug = False
 #normalization = None
-normalization = ["L0", "size"]
+normalization = ["L0", "size", "rotation"]
 
 if plus_NO_EMOTION:
   aux = '_plus_NO_EMOTION'
@@ -267,6 +272,10 @@ if "size" in normalization:
   normalized_train_data = normalize_all_samples_size(train_data)
   train_data = normalized_train_data
 
+if "rotation" in normalization:
+  normalized_train_data = normalize_all_samples_rotation(train_data)
+  train_data = normalized_train_data
+
 # First we read the numpy file for test
 filename = new_dataset_path + '/' + 'test' + '_dataset' + aux + '.npy'
 print('\t[Loading][%s]' % filename)
@@ -280,6 +289,10 @@ if "L0" in normalization:
 
 if "size" in normalization:
   normalized_test_data = normalize_all_samples_size(test_data)
+  test_data = normalized_test_data
+
+if "rotation" in normalization:
+  normalized_test_data = normalize_all_samples_rotation(test_data)
   test_data = normalized_test_data
 
 # Then we read the csv file for train

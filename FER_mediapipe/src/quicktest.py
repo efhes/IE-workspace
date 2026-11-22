@@ -70,7 +70,7 @@ print("[Preparing dataloaders]")
 # Prepare the dataloaders
 batch_size = 8
 use_none_class = False #True
-normalization = ["L0", "size"]
+normalization = ["L0", "size", "rotation"]
 #normalization = []
 
 train_dataloader = prepare_my_dataloader(new_dataset_path, 
@@ -133,7 +133,7 @@ history = model.fit(train_dataloader,
                     verbose=1)
 end_time = time.time()
 execution_time = end_time - start_time
-print(f"\Training finished, execution time: {execution_time:.2f} s")
+print(f"\nTraining finished, execution time: {execution_time:.2f} s")
 
 
 print('\n[PERFORMANCE ANALYSIS]')

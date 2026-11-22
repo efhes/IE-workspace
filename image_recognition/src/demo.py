@@ -49,6 +49,7 @@ with torch.no_grad():
     while True:
         #read image 
         image = picam2.capture_array("main")
+        image = cv2.rotate(image, cv2.ROTATE_180)
 
         # preprocess
         input_tensor = preprocess(image)

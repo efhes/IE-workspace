@@ -106,83 +106,253 @@ def face_get_XYZ(results, image_rgb=None):
     return image_rgb, landmarks
 
 def normalize_L0(landmarks):
-    """Translate landmarks so the first point is the coordinate origin."""
-    landmarks = np.asarray(landmarks, dtype=np.float32)
+    """
+    Translate landmarks so Landmark 0 (upper lip central anchor) is placed at the origin (0, 0).
+    Provides translation/position invariance within the camera frame.
+    Accepts either a 1D flat array of shape (956,) or a 2D array of shape (478, 2).
+    """
+    arr = np.asarray(landmarks, dtype=np.float32)
+    if arr.size == 0 or not np.all(np.isfinite(arr)) or np.all(arr == 0):
+        return arr.copy()
 
-    # Preserve invalid or empty detections instead of producing misleading data.
-    if landmarks.size == 0 or landmarks.ndim != 1 or landmarks.shape[0] != 956:
-        return landmarks.copy()
-    if not np.all(np.isfinite(landmarks)) or np.all(landmarks == 0):
-        return landmarks.copy()
+    was_flat = (arr.ndim == 1)
+    if was_flat:
+        if arr.shape[0] != 956:
+            return arr.copy()
+        pts = arr.reshape(-1, 2).copy()
+    elif arr.ndim == 2 and arr.shape == (478, 2):
+        pts = arr.copy()
+    else:
+        return arr.copy()
 
-    # Copy before translating so callers do not unexpectedly lose raw coordinates.
-    normalized = landmarks.copy()
-    # Translate all landmarks so that the first landmark is at the origin (0, 0).
-    # landmarks[0] is the x coordinate of the first landmark.
-    # landmarks[1] is the y coordinate of the first landmark.
-    # landmarks[2] is the x coordinate of the second landmark.
-    # landmarks[3] is the y coordinate of the second landmark.
-    # And so on...
-    x_off = landmarks[0]
-    y_off = landmarks[1]
+    pts -= pts[0].copy()
+    return pts.reshape(-1) if was_flat else pts
 
-    for i in range(len(landmarks)//2):
-        normalized[i * 2] -= x_off
-        normalized[i * 2 + 1] -= y_off
-    
-    return normalized
 
 def normalize_all_samples_L0(landmarks):
+    """Applies L0 translation normalization to a batch of landmark samples."""
     normalized_landmarks = np.copy(landmarks)
-    """Applies L0 normalization to all the samples whose corresponding landmarks are arranged in rows."""
     for i in range(landmarks.shape[0]):
         normalized_landmarks[i] = normalize_L0(landmarks[i])
     return normalized_landmarks
 
+
 def normalize_size(landmarks, target_dist=0.25):
-    """Scale landmarks using the distance between landmark 0 and the centroid."""
-    landmarks = np.asarray(landmarks, dtype=np.float32)
+    """
+    Scale landmarks relative to Landmark 0 so that the Euclidean distance between
+    Landmark 0 and the facial centroid equals `target_dist`.
+    Provides invariance to face size and distance to the camera.
+    Accepts either a 1D flat array of shape (956,) or a 2D array of shape (478, 2).
+    """
+    arr = np.asarray(landmarks, dtype=np.float32)
+    if arr.size == 0 or not np.all(np.isfinite(arr)) or np.all(arr == 0):
+        return arr.copy()
 
-    if landmarks.size == 0 or landmarks.ndim != 1 or landmarks.shape[0] != 956:
-        return landmarks.copy()
-    if not np.all(np.isfinite(landmarks)) or np.all(landmarks == 0):
-        return landmarks.copy()
-    
-    # Copy before translating so callers do not unexpectedly lose raw coordinates.
-    normalized = landmarks.copy()
-    # Translate all landmarks so that the first landmark is at the origin (0, 0).
-    # landmarks[0] is the x coordinate of the first landmark.
-    # landmarks[1] is the y coordinate of the first landmark.
-    # landmarks[2] is the x coordinate of the second landmark.
-    # landmarks[3] is the y coordinate of the second landmark.
-    # And so on...
-    # First acumulate the x and y coordinates of all landmarks to compute the centroid.
-    x_coords = normalized[::2]
-    y_coords = normalized[1::2]
-    
-    centroid = np.array([np.mean(x_coords), np.mean(y_coords)], dtype=np.float32)
-    
-    # Compute the distance between landmark 0 and the centroid.
-    distance = np.sqrt((centroid[0] - normalized[0]) ** 2 + (centroid[1] - normalized[1]) ** 2)
+    was_flat = (arr.ndim == 1)
+    if was_flat:
+        if arr.shape[0] != 956:
+            return arr.copy()
+        pts = arr.reshape(-1, 2).copy()
+    elif arr.ndim == 2 and arr.shape == (478, 2):
+        pts = arr.copy()
+    else:
+        return arr.copy()
 
-    # Scale the landmarks to the target distance.
-    scale = target_dist / distance
-    
-    # Avoid division by zero for degenerate landmark configurations.
+    anchor = pts[0].copy()
+    centroid = np.mean(pts, axis=0, dtype=np.float32)
+    distance = float(np.linalg.norm(centroid - anchor))
+
     if not np.isfinite(distance) or distance <= np.finfo(np.float32).eps:
-        return landmarks.copy()
+        return arr.copy()
 
-    # Scale all landmarks by the computed scale factor.
-    normalized = normalized * scale
-    
-    return normalized
+    scale = float(target_dist) / distance
+    pts = anchor + (pts - anchor) * scale
+    return pts.reshape(-1) if was_flat else pts
+
 
 def normalize_all_samples_size(landmarks, target_dist=0.25):
-    """Applies size normalization to all the samples whose corresponding landmarks are arranged in rows."""
+    """Applies size/scale normalization to a batch of landmark samples."""
     normalized_landmarks = np.copy(landmarks)
     for i in range(landmarks.shape[0]):
         normalized_landmarks[i] = normalize_size(landmarks[i], target_dist)
     return normalized_landmarks
+
+
+def normalize_rotation(landmarks, left_eye_idx=33, right_eye_idx=263):
+    """
+    Rotate landmarks in-plane around Landmark 0 so that the inter-ocular line
+    connecting the outer eye corners (MediaPipe landmarks 33 and 263) is horizontal (0 deg roll).
+    Provides invariance to in-plane face rotation / head tilt.
+    Accepts either a 1D flat array of shape (956,) or a 2D array of shape (478, 2).
+    """
+    arr = np.asarray(landmarks, dtype=np.float32)
+    if arr.size == 0 or not np.all(np.isfinite(arr)) or np.all(arr == 0):
+        return arr.copy()
+
+    was_flat = (arr.ndim == 1)
+    if was_flat:
+        if arr.shape[0] != 956:
+            return arr.copy()
+        pts = arr.reshape(-1, 2).copy()
+    elif arr.ndim == 2 and arr.shape == (478, 2):
+        pts = arr.copy()
+    else:
+        return arr.copy()
+
+    dx = float(pts[right_eye_idx, 0] - pts[left_eye_idx, 0])
+    dy = float(pts[right_eye_idx, 1] - pts[left_eye_idx, 1])
+    if abs(dx) <= np.finfo(np.float32).eps and abs(dy) <= np.finfo(np.float32).eps:
+        return arr.copy()
+
+    angle = math.atan2(dy, dx)
+    cos_a = float(math.cos(-angle))
+    sin_a = float(math.sin(-angle))
+
+    anchor = pts[0].copy()
+    shifted = pts - anchor
+    rot_x = shifted[:, 0] * cos_a - shifted[:, 1] * sin_a
+    rot_y = shifted[:, 0] * sin_a + shifted[:, 1] * cos_a
+    pts[:, 0] = rot_x + anchor[0]
+    pts[:, 1] = rot_y + anchor[1]
+
+    return pts.reshape(-1) if was_flat else pts
+
+
+def normalize_all_samples_rotation(landmarks, left_eye_idx=33, right_eye_idx=263):
+    """Applies in-plane rotation normalization to a batch of landmark samples."""
+    normalized_landmarks = np.copy(landmarks)
+    for i in range(landmarks.shape[0]):
+        normalized_landmarks[i] = normalize_rotation(
+            landmarks[i], left_eye_idx=left_eye_idx, right_eye_idx=right_eye_idx
+        )
+    return normalized_landmarks
+
+
+def normalize_landmarks_pipeline(landmarks, normalizations=("L0", "size", "rotation"), target_dist=0.25):
+    """
+    Applies a configurable sequence of geometric normalizations ('L0', 'size', 'rotation')
+    to a single face's landmarks ((956,) or (478, 2)).
+    """
+    out = np.asarray(landmarks, dtype=np.float32).copy()
+    if not normalizations:
+        return out
+    norm_set = [str(n).lower() for n in normalizations]
+    if "l0" in norm_set:
+        out = normalize_L0(out)
+    if "size" in norm_set:
+        out = normalize_size(out, target_dist=target_dist)
+    if "rotation" in norm_set or "rot" in norm_set:
+        out = normalize_rotation(out)
+    return out
+
+
+def normalize_all_samples(landmarks, normalizations=("L0", "size", "rotation"), target_dist=0.25):
+    """
+    Applies a configurable sequence of geometric normalizations ('L0', 'size', 'rotation')
+    to an entire dataset array of shape (N, 956) or (N, 478, 2).
+    """
+    out = np.asarray(landmarks, dtype=np.float32).copy()
+    if not normalizations:
+        return out
+    norm_set = [str(n).lower() for n in normalizations]
+    if "l0" in norm_set:
+        out = normalize_all_samples_L0(out)
+    if "size" in norm_set:
+        out = normalize_all_samples_size(out, target_dist=target_dist)
+    if "rotation" in norm_set or "rot" in norm_set:
+        out = normalize_all_samples_rotation(out)
+    return out
+
+
+def plot_normalization_stages(landmarks, target_dist=0.25, left_eye_idx=33, right_eye_idx=263):
+    """
+    Plots a 4-panel visual comparison showing the geometric effect of each normalization stage:
+      1. Raw Landmarks (original position, scale, and tilt)
+      2. After L0 (translation to origin)
+      3. After L0 + size (camera-distance / scale normalization)
+      4. After L0 + size + rotation (in-plane roll alignment via eye corners 33 & 263)
+    """
+    raw = np.asarray(landmarks, dtype=np.float32).reshape(478, 2)
+    s_l0 = normalize_L0(raw)
+    s_size = normalize_size(s_l0, target_dist=target_dist)
+    s_rot = normalize_rotation(s_size, left_eye_idx=left_eye_idx, right_eye_idx=right_eye_idx)
+
+    stages = [
+        ("1. Raw Landmarks", raw),
+        ("2. + L0 (Translation)", s_l0),
+        (f"3. + Size (d={target_dist:.2f})", s_size),
+        ("4. + Rotation (0° Eye-Line)", s_rot),
+    ]
+
+    fig, axes = plt.subplots(1, 4, figsize=(18, 4.5))
+    for ax, (title, pts) in zip(axes, stages):
+        centroid = np.mean(pts, axis=0)
+        dist = float(np.linalg.norm(centroid - pts[0]))
+        dx = float(pts[right_eye_idx, 0] - pts[left_eye_idx, 0])
+        dy = float(pts[right_eye_idx, 1] - pts[left_eye_idx, 1])
+        angle_deg = math.degrees(math.atan2(dy, dx))
+
+        ax.scatter(pts[:, 0], pts[:, 1], s=6, c="#1f77b4", alpha=0.75, label="Face Mesh (478)")
+        ax.scatter(pts[0, 0], pts[0, 1], s=55, c="#d62728", marker="o", zorder=5, label="L0 (Origin Anchor)")
+        ax.scatter(centroid[0], centroid[1], s=55, c="#2ca02c", marker="X", zorder=5, label="Centroid")
+        # Inter-ocular line (33 -> 263)
+        ax.plot(
+            [pts[left_eye_idx, 0], pts[right_eye_idx, 0]],
+            [pts[left_eye_idx, 1], pts[right_eye_idx, 1]],
+            color="#ff7f0e",
+            linewidth=2.2,
+            zorder=4,
+            label="Inter-ocular axis",
+        )
+        ax.set_title(f"{title}\nd={dist:.3f} | tilt={angle_deg:+.1f}°", fontsize=10.5, fontweight="bold")
+        ax.set_aspect("equal", adjustable="datalim")
+        ax.grid(True, alpha=0.3)
+
+    axes[0].legend(loc="lower left", fontsize=8)
+    plt.suptitle("Geometric Face Landmark Normalization Pipeline (L0 → Size → Rotation)", fontsize=13, fontweight="bold", y=1.03)
+    plt.tight_layout()
+    plt.show()
+
+
+def perturb_landmarks_batch(
+    landmarks_batch,
+    scale_range=(0.55, 1.65),
+    shift_range=(-0.25, 0.25),
+    angle_deg_range=(-35.0, 35.0),
+    seed=42,
+):
+    """
+    Simulates real-world camera variations on a batch of raw landmarks (N, 956):
+      - Different face distances to the camera / face sizes (random scaling)
+      - Different head tilt angles (random in-plane rotation in degrees)
+      - Different face positions in the frame (random 2D translation)
+    Used in the notebook ablation study to demonstrate why raw/partially-normalized
+    models fail under realistic camera conditions while full normalization remains invariant.
+    """
+    rng = np.random.default_rng(seed)
+    out = np.asarray(landmarks_batch, dtype=np.float32).copy()
+    for i in range(out.shape[0]):
+        pts = out[i].reshape(478, 2)
+        if np.all(pts == 0):
+            continue
+        centroid = np.mean(pts, axis=0)
+        centered = pts - centroid
+
+        # 1. Random scale (simulating closer/farther distance from camera)
+        scale = float(rng.uniform(scale_range[0], scale_range[1]))
+        scaled = centered * scale
+
+        # 2. Random head tilt rotation
+        angle_rad = math.radians(float(rng.uniform(angle_deg_range[0], angle_deg_range[1])))
+        cos_a, sin_a = math.cos(angle_rad), math.sin(angle_rad)
+        rot_x = scaled[:, 0] * cos_a - scaled[:, 1] * sin_a
+        rot_y = scaled[:, 0] * sin_a + scaled[:, 1] * cos_a
+        rotated = np.column_stack((rot_x, rot_y))
+
+        # 3. Random translation in camera frame
+        shift = rng.uniform(shift_range[0], shift_range[1], size=(1, 2)).astype(np.float32)
+        out[i] = (rotated + centroid + shift).reshape(-1)
+    return out
     
 def plot_face_landmarks(landmarks, ax):
     ax.clear()
@@ -546,3 +716,180 @@ def ArrangeInputDataForNetwork (x_data, debug = False):
 
   # Return tensor ready for network input.
   return x_data_out
+
+
+def run_normalization_ablation_study(
+    raw_train_data,
+    y_train_onehot,
+    raw_test_data,
+    y_test_onehot,
+    define_network_model_fn,
+    num_classes,
+    network_type="CNN",
+    num_cnn_features=64,
+    dropout=0.3,
+    batch_size=8,
+    epochs=80,
+    patience=20,
+    learning_rate=1e-4,
+    configs=None,
+):
+    """
+    Runs a systematic ablation study across landmark normalization configurations:
+      1. None: []
+      2. Position only: ['L0']
+      3. Position + Scale/Distance: ['L0', 'size']
+      4. Position + Rotation: ['L0', 'rotation']
+      5. Full (Position + Scale/Distance + Rotation): ['L0', 'size', 'rotation']
+
+    Evaluates each trained model both on:
+      - The original Test Set ('Standard Test Acc (%)')
+      - A Geometrically Perturbed Test Set simulating real-time camera variations:
+        changes in user distance/face size, camera frame shifts, and head tilt ('Perturbed Test Acc (%)').
+    """
+    import time
+    import keras
+    from keras.optimizers import AdamW
+    from keras.callbacks import EarlyStopping
+    from sklearn.metrics import accuracy_score, f1_score
+
+    if configs is None:
+        configs = [
+            ("1. No Normalization ([])", []),
+            ("2. Translation Only (['L0'])", ["L0"]),
+            ("3. Translation + Size (['L0', 'size'])", ["L0", "size"]),
+            ("4. Translation + Rotation (['L0', 'rotation'])", ["L0", "rotation"]),
+            ("5. Full: L0 + Size + Rotation", ["L0", "size", "rotation"]),
+        ]
+
+    # Create a geometrically perturbed version of raw_test_data (simulating real camera movement/tilt/distance)
+    perturbed_raw_test = perturb_landmarks_batch(
+        raw_test_data,
+        scale_range=(0.55, 1.65),
+        shift_range=(-0.25, 0.25),
+        angle_deg_range=(-35.0, 35.0),
+        seed=42,
+    )
+    y_true_test = np.argmax(y_test_onehot, axis=1)
+
+    ablation_records = []
+
+    for label, norm_list in configs:
+        print(f"\n{'=' * 75}")
+        print(f"[ABLATION EXPERIMENT] {label} | normalizations = {norm_list}")
+        print(f"{'=' * 75}")
+
+        np.random.seed(2022)
+        keras.utils.set_random_seed(2022)
+
+        x_tr_norm = normalize_all_samples(raw_train_data, normalizations=norm_list)
+        x_te_norm = normalize_all_samples(raw_test_data, normalizations=norm_list)
+        x_te_pert_norm = normalize_all_samples(perturbed_raw_test, normalizations=norm_list)
+
+        x_tr = ArrangeInputDataForNetwork(x_tr_norm)
+        x_te = ArrangeInputDataForNetwork(x_te_norm)
+        x_te_pert = ArrangeInputDataForNetwork(x_te_pert_norm)
+
+        model = define_network_model_fn(
+            num_classes=num_classes,
+            network_type=network_type,
+            num_cnn_features=num_cnn_features,
+            dropout=dropout,
+        )
+
+        early_stopping = EarlyStopping(
+            monitor="val_loss",
+            patience=patience,
+            restore_best_weights=True,
+            verbose=0,
+        )
+        opt = AdamW(learning_rate=learning_rate, weight_decay=1e-4)
+        model.compile(loss="categorical_crossentropy", optimizer=opt, metrics=["accuracy"])
+
+        t0 = time.time()
+        model.fit(
+            x_tr,
+            y_train_onehot,
+            batch_size=batch_size,
+            epochs=epochs,
+            verbose=0,
+            shuffle=True,
+            validation_data=(x_te, y_test_onehot),
+            callbacks=[early_stopping],
+        )
+        elapsed = time.time() - t0
+
+        preds_std = np.argmax(model.predict(x_te, batch_size=batch_size, verbose=0), axis=1)
+        preds_pert = np.argmax(model.predict(x_te_pert, batch_size=batch_size, verbose=0), axis=1)
+
+        acc_std = 100.0 * accuracy_score(y_true_test, preds_std)
+        f1_std = 100.0 * f1_score(y_true_test, preds_std, average="macro")
+        acc_pert = 100.0 * accuracy_score(y_true_test, preds_pert)
+        f1_pert = 100.0 * f1_score(y_true_test, preds_pert, average="macro")
+
+        print(
+            f"  -> Standard Test Acc : {acc_std:6.2f}% (Macro-F1: {f1_std:6.2f}%)\n"
+            f"  -> Perturbed Test Acc: {acc_pert:6.2f}% (Macro-F1: {f1_pert:6.2f}%) "
+            f"[Simulated distance/shift/rotation variations]"
+        )
+
+        ablation_records.append({
+            "Configuration": label,
+            "Normalizations": str(norm_list),
+            "Standard Test Acc (%)": round(acc_std, 2),
+            "Standard Macro-F1 (%)": round(f1_std, 2),
+            "Perturbed Test Acc (%)": round(acc_pert, 2),
+            "Perturbed Macro-F1 (%)": round(f1_pert, 2),
+            "Training Time (s)": round(elapsed, 2),
+        })
+
+    df_ablation = pd.DataFrame(ablation_records)
+    print("\n================ ABLATION STUDY SUMMARY ================")
+    print(df_ablation.to_string(index=False))
+
+    # Plot side-by-side comparison bar chart
+    x_idx = np.arange(len(df_ablation))
+    width = 0.36
+    fig, ax = plt.subplots(figsize=(12, 5.2))
+    b1 = ax.bar(
+        x_idx - width / 2,
+        df_ablation["Standard Test Acc (%)"],
+        width,
+        label="Standard Test Set",
+        color="#1f77b4",
+        edgecolor="black",
+    )
+    b2 = ax.bar(
+        x_idx + width / 2,
+        df_ablation["Perturbed Test Acc (%)"],
+        width,
+        label="Perturbed Test Set (Distance + Shift + Rotation variations)",
+        color="#ff7f0e",
+        edgecolor="black",
+    )
+
+    ax.set_xticks(x_idx)
+    ax.set_xticklabels(df_ablation["Configuration"], rotation=15, ha="right")
+    ax.set_ylim(0, 112)
+    ax.set_ylabel("Accuracy (%)")
+    ax.set_title("Ablation Study: Impact of Landmark Normalizations on Emotion Recognition", fontsize=13, fontweight="bold")
+    ax.legend(loc="upper left")
+    ax.grid(axis="y", alpha=0.3)
+
+    for bars in (b1, b2):
+        for bar in bars:
+            h = bar.get_height()
+            ax.text(
+                bar.get_x() + bar.get_width() / 2.0,
+                min(h + 1.5, 105.0),
+                f"{h:.1f}%",
+                ha="center",
+                va="bottom",
+                fontsize=9,
+                fontweight="bold",
+            )
+
+    plt.tight_layout()
+    plt.show()
+
+    return df_ablation

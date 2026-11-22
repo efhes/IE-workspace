@@ -46,7 +46,8 @@ from landmarks_utils import (
     FlattenFaceLandmarks,
     ArrangeInputDataForNetwork,
     normalize_L0,
-    normalize_size
+    normalize_size,
+    normalize_rotation,
 )
 
 if ON_RASPBERRY_PI:
@@ -158,7 +159,7 @@ def main():
         cam = PICamera(recording_res=cam_config.resolution)
         if ON_SENSE_HAT:
             sense_hat = SenseHat()
-            sense_hat.set_rotation(180)
+            sense_hat.set_rotation(0)
     else:
         cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
@@ -184,7 +185,7 @@ def main():
         
         # Convert the image to RGB for Mediapipe
         if ON_RASPBERRY_PI == False:
-            image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            image_rgb = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2RGB)
         
         # Process the image and get hand landmarks
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
@@ -231,9 +232,10 @@ def main():
                     flat_landmark_values = FlattenFaceLandmarks(landmark_values)
                     #landmarks = landmarks.astype(np.float32)
 
-                    # Apply normalizations
+                    # Apply geometric normalizations (translation + scale/camera-distance + in-plane rotation)
                     landmarks = normalize_L0(flat_landmark_values)
                     landmarks = normalize_size(landmarks)
+                    landmarks = normalize_rotation(landmarks)
 
                     # landmarks original: (956,)
                     landmarks = np.expand_dims(landmarks, axis=0)  # (1, 956)
