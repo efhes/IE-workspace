@@ -32,8 +32,18 @@ try:
 except ModuleNotFoundError as e:
     print(f"❌ Error: {e}")
 
-ON_RASPBERRY_PI = True
-ON_SENSE_HAT = True
+# Auto-detect Raspberry Pi so the script runs seamlessly on both Mac/PC and Raspberry Pi
+def _is_raspberry_pi():
+    try:
+        if os.path.exists("/proc/device-tree/model"):
+            with open("/proc/device-tree/model", "r", errors="ignore") as f:
+                return "raspberry pi" in f.read().lower()
+    except Exception:
+        pass
+    return False
+
+ON_RASPBERRY_PI = _is_raspberry_pi()
+ON_SENSE_HAT = ON_RASPBERRY_PI
 
 from cameras import CVCamera, PICamera, CameraConfig
 from config import Config
@@ -69,8 +79,13 @@ config = Config(classes=classes, use_landmarks = True)
 # FRAME RATE
 FPS = 15
 
-#MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size.keras"
-MODEL_PATH = PROJECT_DIR / "models" / "FER_finetuned.keras"
+MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size_rotation.keras"
+if not MODEL_PATH.is_file():
+    MODEL_PATH = PROJECT_DIR / "models" / "new_model_CNN_L0_size.keras"
+#MODEL_PATH = PROJECT_DIR / "models" / "FER_finetuned.keras"
+
+# Reference aspect ratio of the training dataset (1280x720 = 16:9)
+TRAINING_ASPECT_RATIO = 1280.0 / 720.0
 
 # Remember they must keep the same order than the used in training.
 # The image is used when using the sense hat. It must be a mask image of 8x8 px.
@@ -161,7 +176,8 @@ def main():
             sense_hat = SenseHat()
             sense_hat.set_rotation(0)
     else:
-        cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
+        cam = CVCamera(recording_res=cam_config.resolution, index_cam=0)
+        #cam = CVCamera(recording_res=cam_config.resolution, index_cam=0) # index_cam=1 is for the external camera, index_cam=0 is for the internal camera
         sense_hat = None
 
     cam.start()
@@ -170,12 +186,14 @@ def main():
     last = 0
     predictions = np.zeros((1, len(classes)))
     prediction_idx = 0
+    pred = 'None'
+    probability = 0.0
     
     while True:
-        # Load the input image.
-        image_rgb = cam.read_frame()
+        # Load the input image (both PICamera "RGB888" and CVCamera return BGR frames for OpenCV)
+        image = cam.read_frame()
         
-        if image_rgb is None:
+        if image is None:
             # Depending the setup, the camera might need approval to activate, so wait until we start receiving images.
             print("Waiting for camera input")
             continue
@@ -183,11 +201,10 @@ def main():
         # Get current time to control the processing rate of the model
         now = time.time()
         
-        # Convert the image to RGB for Mediapipe
-        if ON_RASPBERRY_PI == False:
-            image_rgb = cv2.cvtColor(image_rgb, cv2.COLOR_BGR2RGB)
+        # Always convert the BGR camera frame to RGB before feeding it to MediaPipe (SRGB)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        # Process the image and get hand landmarks
+        # Process the image and get face landmarks
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=image_rgb)
         detection_result = detector.detect(mp_image)
         
@@ -200,78 +217,60 @@ def main():
             face_landmarks_list = detection_result.multi_face_landmarks
 
         if detection_result is None or face_landmarks_list is None or len(face_landmarks_list) == 0:
-            # If no face is detected, we can skip the rest of the loop and continue to the next frame.
-            cv2.imshow("Emotions classifier", image_rgb)
-            key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
-            if key == ord("q"):
-                if ON_RASPBERRY_PI:
-                    if ON_SENSE_HAT:
-                        sense_hat.clear()
-                break
-            
             pred = 'None'
             probability = 0.0
             predictions = np.zeros((1, len(classes)))
         else:
             landmark_values = GetFaceLandmarksListFromDetectionResult(detection_result)
         
-            # If landmark_values is empty we iterate and ignore current sample
             if not landmark_values:
-                cv2.imshow("Emotions classifier", image_rgb)
-                key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
-                if key == ord("q"):
-                    if ON_RASPBERRY_PI:
-                        if ON_SENSE_HAT:
-                            sense_hat.clear()
-                    break
-                continue
+                pred = 'None'
+                probability = 0.0
+                predictions = np.zeros((1, len(classes)))
             else:
-                # If we have successfully detected a face, we can proceed with the rest of the loop.
-                # Process the image to the model every 0.25s
+                # Draw detected face mesh on the display frame
+                image = draw_landmarks_on_image(image, detection_result)
+
+                # Process the landmarks through the model every 0.25s
                 if now - last > 0.25:
-                    flat_landmark_values = FlattenFaceLandmarks(landmark_values)
-                    #landmarks = landmarks.astype(np.float32)
+                    flat_landmark_values = np.asarray(FlattenFaceLandmarks(landmark_values), dtype=np.float32)
+
+                    # Correct aspect-ratio difference when running at 4:3 (640x480 on Raspberry Pi)
+                    # vs 16:9 (1280x720 in training dataset / Mac) so normalized x/y proportions match
+                    frame_h, frame_w = image.shape[:2]
+                    current_aspect = float(frame_w) / float(frame_h)
+                    if abs(current_aspect - TRAINING_ASPECT_RATIO) > 1e-3:
+                        flat_landmark_values[0::2] *= (current_aspect / TRAINING_ASPECT_RATIO)
 
                     # Apply geometric normalizations (translation + scale/camera-distance + in-plane rotation)
                     landmarks = normalize_L0(flat_landmark_values)
                     landmarks = normalize_size(landmarks)
                     landmarks = normalize_rotation(landmarks)
 
-                    # landmarks original: (956,)
+                    # Reshape to (1, 478, 2, 1) for the network
                     landmarks = np.expand_dims(landmarks, axis=0)  # (1, 956)
                     landmarks = ArrangeInputDataForNetwork(landmarks)  # (1, 478, 2, 1)
                     
-                    # Obtener predicción
-                    predictions = model.predict(landmarks, verbose=0)
+                    # Run inference
+                    predictions = np.asarray(model(landmarks, training=False))
                     
-                    # We process prediction results to display them on the screen and on the sense hat if we are using a Raspberry PI
                     if predictions is not None:
-                        # We identify the class with the highest probability and its corresponding label
-                        prediction_idx = np.argmax(predictions)
-                        probability = predictions[0, prediction_idx] * 100
+                        prediction_idx = int(np.argmax(predictions))
+                        probability = float(predictions[0, prediction_idx]) * 100.0
                         pred = config.classes[prediction_idx]
                         print(f"Predicted emotion: {pred} ({probability:.2f}%)")
-                        # We also print the prediction on the image and on the sense hat if we are using a Raspberry PI
-                        
                     else:
                         print("No predictions available.")
 
                     last = time.time()
-                    
-        image_rgb = draw_landmarks_on_image(image_rgb, detection_result)
-        #image_rgb = draw_results(
-        #    image_rgb,
-        #    predictions,
-        #    classes,
-        #    face_corners=[tuple(corner_ul), tuple(corner_br)],
-        #    sense_hat=sense_hat,
-        #)
-        if ON_RASPBERRY_PI:
-            if ON_SENSE_HAT:
-                if sense_hat is not None:
-                    sense_hat.load_image(
-                        os.path.join("./FER_mediapipe/emoticons", classes[prediction_idx]["image"])
-                    )
+
+        if ON_RASPBERRY_PI and ON_SENSE_HAT and sense_hat is not None:
+            if pred == 'None':
+                sense_hat.clear()
+            else:
+                sense_hat.load_image(
+                    os.path.join("./FER_mediapipe/emoticons", classes[prediction_idx]["image"])
+                )
                 
         if pred == 'None':
             color1 = colors.color['black']
@@ -283,15 +282,19 @@ def main():
             txt2 = "", pos2 = (0, 0), col2 = colors.color['black'],
             txt3 = "", pos3 = (0, 0), col3 = colors.color['black'])
 
-        class_msgs.ShowWindowMessages(image_rgb)
+        class_msgs.ShowWindowMessages(image)
         
-        cv2.imshow(window_title, image_rgb)
+        cv2.imshow(window_title, image)
         key = cv2.waitKey(int(1 / FPS * 1000)) & 0xFF
         if key == ord("q"):
             if ON_RASPBERRY_PI:
-                if ON_SENSE_HAT:
+                if ON_SENSE_HAT and sense_hat is not None:
                     sense_hat.clear()
             break
+
+    cam.stop()
+    cam.close()
+    cv2.destroyAllWindows()
 
 if __name__ == "__main__":
     main()
